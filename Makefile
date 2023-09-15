@@ -19,6 +19,8 @@ debug-console:
 list:
 	@grep '^[^#[:space:]].*:' Makefile
 compile:
+	@rm -Rf node_modules
+	@npm install typescript
 	@npx tsc
 clear:
 	rm -f "$(KWINPKG_FILE)"
@@ -29,5 +31,7 @@ build: clear compile
 	rm -Rf build;
 	mkdir -p build/contents/code
 	cp -r contents/code build/contents/
+	@find "build/" '(' -name "*.ts" ')' -delete
+	@find "build/" -type d -empty -print -delete
 	cp metadata.json build/
 	@7z a -tzip $(KWINPKG_FILE) ./build/*

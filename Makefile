@@ -22,3 +22,5 @@ build: clear
 	@7z a -tzip $(KWINPKG_FILE) ./*
 clear:
 	rm -f "$(KWINPKG_FILE)"
+lint:
+	npx eslint $(MAIN_FILE)

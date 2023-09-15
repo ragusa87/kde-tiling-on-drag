@@ -16,7 +16,7 @@ Inspired by:
 
 How to install:
 
-1. run `make install` (you will need `7z` && `plasmapkg2`).
+1. run `make install` (you will need `7z` && `plasmapkg2` && `npm`).
 2. Open Plasma setting and search for "KWin" (Windows Management -> KWin Script).
 3. Enable this extension (kwintillingapi).
 4. Click on Apply.

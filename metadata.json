@@ -1,0 +1,18 @@
+{
+    "KPlugin": {
+        "Name": "kwintillingapi",
+        "Description": "Enable Window Tilling with API",
+        "Icon": "preferences-system-windows",
+        "Authors": [
+            {
+                "Name": "Laurent Constantin"
+            }
+        ],
+        "Id": "kwin-api-tilling",
+        "Version": "0.1",
+        "License": "GPLv3"
+    },
+    "X-Plasma-API": "javascript",
+    "X-Plasma-MainScript": "code/main.js",
+    "KPackageStructure": "KWin/Script"
+}

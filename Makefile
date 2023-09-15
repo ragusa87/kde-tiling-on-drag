@@ -1,4 +1,4 @@
-PROJECT_NAME = kwin-api-tilling
+PROJECT_NAME = kde-tilling-on-drag
 KWINPKG_FILE=$(PROJECT_NAME).kwinscript
 MAIN_FILE=contents/code/main.js
 

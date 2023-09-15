@@ -1,6 +1,6 @@
 {
     "KPlugin": {
-        "Name": "kwintillingapi",
+        "Name": "kde-tilling-on-drag",
         "Description": "Enable Window Tilling with API",
         "Icon": "preferences-system-windows",
         "Authors": [
@@ -8,7 +8,7 @@
                 "Name": "Laurent Constantin"
             }
         ],
-        "Id": "kwin-api-tilling",
+        "Id": "kde-tilling-on-drag",
         "Version": "0.1",
         "License": "GPLv3"
     },

@@ -1,0 +1,6 @@
+env:
+  es2024: true
+rules:
+  # Override default settings
+  "curly": "error"
+  "quotes": ["error", "backtick"]

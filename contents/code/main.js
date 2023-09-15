@@ -1,5 +1,8 @@
-// If you want to edit this file, set a duration for 15 second, so the script is automatically unloaded afterwards.
-DEFAULT_BIND_DURATION = -1
+/* global workspace, print, console, QTimer */
+
+// If you want to debug this script, set a duration for 15 second, so the script is automatically unloaded.
+// As kde doesn't unload script, your event will never be removed. See also "make debug-run".
+const DEFAULT_BIND_DURATION = -1;
 
 // Implement setTimeout as it's missing
 function setTimeout(callbackFunc, milliseconds) {
@@ -13,33 +16,39 @@ function setTimeout(callbackFunc, milliseconds) {
 }
 
 // Bind to an event on temporal basis, useful for debugging as "kwin" don't unload script on change.
-function connectTemporarily(object, callback, duration = null){
-    duration = duration ?? DEFAULT_BIND_DURATION
+function connectTemporarily(object, callback, duration){
+    duration = duration ?? DEFAULT_BIND_DURATION;
     object.connect(callback);
-    if(duration < 0)
+    if(duration < 0) {
         return;
+    }
 
     setTimeout(function(){
-        console.log("disconnect")
+        debug(`disconnect`)
         object.disconnect(callback);
     }, duration)
 }
 
-// When the user move a window, tile it !
+// Some clients are never tiled (popup, splash, menu, etc)
+const ignoreClient = function(client){
+    return ! client.normalWindow;
+}
+
+// When the user moves a window, tile it !
 const clientStartUserMovedResized = function(client){
-    print("clientFinishUserMovedResized");
+    print(`clientFinishUserMovedResized`);
     tileClient(client)
 }
 
 // ===
 // Listener that are client specific
 function addListenersOnClient(client){
-    print("Add listeners " + client.resourceName)
+    print(`Add listeners ` + client.resourceName)
     connectTemporarily(client.clientFinishUserMovedResized, clientStartUserMovedResized, -1);
 }
 
 function removeListenersOnClient(client){
-    print("remove listeners " + client.resourceName)
+    print(`remove listeners ` + client.resourceName)
     client.clientFinishUserMovedResized.disconnect(clientStartUserMovedResized);
 }
 
@@ -53,10 +62,10 @@ const getCenter = function(g){
 }
 
 // Print debug information
-const debug = function(tileManager){
-    for (let key in tileManager) {
-        if (tileManager.hasOwnProperty(key)) {
-            console.log(key, tileManager[key]);
+const debug = function(obj){
+    for (let key in obj) {
+        if (Object.hasOwnProperty.call(obj, key)) {
+            console.log(key, obj[key]);
         }
     }
 }
@@ -68,49 +77,35 @@ const tileClient = function(client){
         return;
     }
 
-    // Take the windows current postion at center
+    // Take the windows current position at center
     const center = getCenter(client.geometry);
 
     // Get the tiling manager from KDE
     const tileManager = workspace.tilingForScreen(client.screen);
 
-    // Ask where is the best location for this current window
-    const tile = tileManager.bestTileForPosition(center.x, center.y);
-
-    // Assign the location to the window
-    client.tile = tile;
+    // Ask where is the best location for this current window and assign it to the client.
+    client.tile = tileManager.bestTileForPosition(center.x, center.y);
 }
 
 connectTemporarily(workspace.clientAdded,function(client) {
-    print("> clientAdded " + client)
+    print(`> clientAdded ` + client)
     tileClient(client);
     addListenersOnClient(client)
 });
 
 connectTemporarily(workspace.clientRemoved,function(client) {
-    print("> clientRemoved " + client)
+    print(`> clientRemoved ` + client)
     removeListenersOnClient(client)
 });
 
 
-connectTemporarily(workspace.clientUnminimized,function(client, h, v) {
-    print("> clientUnminimized " + client + " current: " + client.minimized);
+connectTemporarily(workspace.clientUnminimized,function(client) {
+    print(`> clientUnminimized ${client} current: {client.minimized}`);
     tileClient(client);
 });
 
-
-
-//connectTemporarily(workspace.quickTileModeChanged,function() {
-//print("> quickTileModeChanged ");
-//});
-
-print("Counts " + workspace.clientList().length);
-//debug(workspace.clientList())
+// On script initialization, handle existing clients
 workspace.clientList().forEach((d) => {
     removeListenersOnClient(d)
     addListenersOnClient(d)
 });
-
-const ignoreClient = function(client){
-    return ! client.normalWindow;
-}

@@ -70,7 +70,7 @@ const debug = function(obj){
     }
 }
 
-// Do title the window using KDE 5.27 tiling system
+// Do tile the window using KDE 5.27 tiling system
 const tileClient = function(client){
 
     if(ignoreClient(client)){

@@ -35,47 +35,109 @@ declare interface Toplevel {
     windowClosed: Signal<(client: AbstractClient, deleted: object) => void>;
     screenChanged: Signal<() => void>;
 }
+
+// See https://invent.kde.org/plasma/kwin/-/blob/master/src/window.h
 declare interface AbstractClient extends Toplevel {
-    readonly resizeable: boolean;
-    readonly moveable: boolean;
-    readonly transient: boolean;
-    // added these three after looking at bismuth, lets see if they work
+    // objectName
+    // bufferGeometry: QRectF
+    // pos: QPointF
+    // size: QSizeF
+    // x: number
+    // y: number
+    // width: number
+    // height: number
+    // opacity: number
+    screen: number;
+    ouput: number;
+    // rect: QRectF
+    readonly resourceName: string;
+    resourceClass: QByteArray;
+    // windowRole:
+    // minimizedChanged: Signal
+readonly desktopWindow: boolean;
+    readonly dock: boolean;
+    readonly toolbar: boolean;
+    readonly menu: boolean;
+    readonly normalWindow: boolean;
     readonly dialog: boolean;
     readonly splash: boolean;
     readonly utility: boolean;
-    readonly specialWindow: boolean;
-    readonly normalWindow: boolean;
-    readonly geometry: QRect;
-    readonly resourceName: string;
-    tile: Tile | null;
-    keepAbove: boolean;
-    keepBelow: boolean;
-    noBorder: boolean;
+    readonly dropDownMenu: boolean;
+    readonly popupMenu: boolean;
+    readonly tooltip: boolean;
+    readonly notification: boolean;
+    readonly criticalNotification: boolean;
+    readonly appletPopup: boolean;
+    readonly onScreenDisplay: boolean;
+    readonly comboBox: boolean;
+    readonly dndIcon: boolean;
+    readonly windowType: Number;
+    readonly managed: boolean;
+    readonly deleted: boolean;
+    readonly shaped: boolean;
+    readonly skipsCloseAnimation: boolean;
+    readonly popupWindow: boolean;
+    readonly outline: boolean;
+    internalId: string;
+    pid: Number;
+    stackingOrder: Number;
     fullScreen: boolean;
-    minimized: boolean;
+    fullScreenable: boolean;
+    active: boolean;
+    //desktops: Array Unable to handle unregistered datatype 'QVector<KWin::VirtualDesktop*>
+    onAllDesktops: boolean;
     activities: Array<string>;
-    resourceClass: QByteArray;
+    x11DesktopIds: Number;
+    skipTaskbar: boolean;
+    skipPager: boolean;
+    skipSwitcher: boolean;
+    closeable: boolean;
+    // icon: QVariant
+    keepAbove: boolean,
+    keepBelow: boolean;
+    shadeable: boolean;
+    shade: boolean;
+    readonly minimizable: boolean;
+    minimized: boolean;
+    readonly iconGeometry: QRect
+    readonly specialWindow: boolean;
+    readonly demandsAttention: boolean;
     caption: string;
     minSize: QRect;
-    // frameGeometry is read/write for abstractclient
-    frameGeometry: QRect;
-    screen: number;
-    // custom tiling stuff that isnt in base kwin but we need it
-    // has been tiled at least once
-    hasBeenTiled: boolean | undefined;
-    // was just tiled
-    wasTiled: boolean | undefined;
-    lastTileCenter: QPoint | undefined;
-    // stuff to keep tabs on changes between locations
-    oldActivities: Array<string> | undefined;
-    oldDesktop: number | undefined;
-    oldScreen: number | undefined;
-    // for some reason, kwin doesn't include whether the window is maximized, so we add it ourselves
-    maximized: boolean | undefined;
-    // whether the client is the only tile on their screen or not
-    isSingleTile: boolean | undefined;
-    // a client to refullscreen when this client is untiled
-    refullscreen: AbstractClient | undefined;
+    maxSize: QRect;
+    readonly wantsInput: boolean;
+    readonly transient: boolean;
+    // transientFor
+    readonly modal: boolean;
+    readonly geometry: QRect;
+    frameGeometry: QRect; //  is read/write for abstractclient
+    readonly move: boolean;
+    readonly resize: boolean;
+    readonly decorationHasAlpha: boolean;
+    noBorder: boolean;
+    readonly providesContextHelp: boolean;
+    readonly maximizable: boolean;
+    readonly moveable: boolean;
+    readonly moveableAcrossScreens: boolean;
+    readonly resizeable: boolean;
+    //readonly desktopFileName: string
+    readonly hasApplicationMenu: boolean;
+    readonly unresponsive: boolean;
+    //readonly colorScheme: kdeglobals;
+    readonly layer: number
+    readonly hidden: boolean;
+    tile: Tile | null;
+    // basicUnit: ??
+    readonly blocksCompositing: boolean;
+    readonly clientSideDecorated: boolean;
+    readonly frameId: number;
+    readonly windowId: number;
+
+    /// Not found while dumping properties
+    // readonly isComboBox: boolean;
+    // readonly isClient: boolean;
+    // output: number;
+
     // signals
     desktopPresenceChanged: Signal<(client: AbstractClient, desktop: number) => void>;
     desktopChanged: Signal<() => void>;
@@ -85,7 +147,77 @@ declare interface AbstractClient extends Toplevel {
     clientFinishUserMovedResized: Signal<(client: AbstractClient) => void>;
     quickTileModeChanged: Signal<() => void>;
     minimizedChanged: Signal<() => void>;
-    // functions
+// Other signals:
+// objectNameChanged
+// stackingOrderChanged: Signal
+// shadeChanged: Signal
+// opacityChanged: Signal
+// damaged: Signal
+// inputTransformationChanged: Signal
+// geometryChanged: Signal
+// geometryShapeChanged: Signal
+// windowShown: Signal
+// windowHidden: Signal
+// shapedChanged: Signal
+// skipCloseAnimationChanged: Signal
+// windowRoleChanged: Signal
+// windowClassChanged: Signal
+// hasAlphaChanged: Signal
+// surfaceChanged: Signal
+// shadowChanged: Signal
+// bufferGeometryChanged: Signal
+// frameGeometryChanged: Signal
+// clientGeometryChanged: Signal
+// frameGeometryAboutToChange: Signal
+// visibleGeometryChanged: Signal
+// tileChanged: Signal
+// skipTaskbarChanged: Signal
+// skipPagerChanged: Signal
+// skipSwitcherChanged: Signal
+// iconChanged: Signal
+// activeChanged: Signal
+// keepAboveChanged: Signal
+// keepBelowChanged: Signal
+// demandsAttentionChanged: Signal
+// x11DesktopIdsChanged: Signal
+// clientMinimized: Signal
+// clientUnminimized: Signal
+// paletteChanged: Signal
+// colorSchemeChanged: Signal
+// captionChanged: Signal
+// clientMaximizedStateAboutToChange: Signal
+// transientChanged: Signal
+// modalChanged: Signal
+// moveResizedChanged: Signal
+// moveResizeCursorChanged: Signal
+// clientStartUserMovedResized: Signal
+// clientStepUserMovedResized: Signal
+// closeableChanged: Signal
+// minimizeableChanged: Signal
+// shadeableChanged: Signal
+// maximizeableChanged: Signal
+// desktopFileNameChanged: Signal
+// applicationMenuChanged: Signal
+// hasApplicationMenuChanged: Signal
+// applicationMenuActiveChanged: Signal
+// unresponsiveChanged: Signal
+// decorationChanged: Signal
+// hiddenChanged: Signal
+// lockScreenOverlayChanged: Signal
+// closeWindow: Signal
+// setReadyForPainting: Signal
+// setMaximize: Signal
+// clientManaging: Signal
+// clientFullScreenSet: Signal
+// showRequest: Signal
+// menuHidden: Signal
+// appMenuAvailable: Signal
+// appMenuUnavailable: Signal
+// blockingCompositingChanged: Signal
+// clientSideDecoratedChanged: Signal
+// updateCaption: Signal
+
+// functions
     setMaximize(vertically: boolean, horizontally: boolean): void;
 }
 declare interface Tile {
@@ -118,14 +250,29 @@ declare enum ClientAreaOption {
     FullArea,
     ScreenArea,
 }
-declare interface RootTile extends Tile {
+declare interface CustomTile extends Tile {
     parent: null;
     layoutModified: Signal<() => void>;
     // extra thing used in engine
     connected: boolean | undefined;
 }
+
+declare enum QuickTileFlag {
+    None = 0,
+    Left = 1 << 0,
+    Right = 1 << 1,
+    Top = 1 << 2,
+    Bottom = 1 << 3,
+    Custom = 1 << 4,
+    Horizontal = Left | Right,
+    Vertical = Top | Bottom,
+    Maximize = Left | Right | Top | Bottom,
+}
+
 declare interface TileManager {
-    rootTile: RootTile;
+    rootTile: CustomTile;
+    quickTile(int: QuickTileFlag): Tile|null;
+    model: string
     bestTileForPosition(x: number, y: number): Tile | null;
 }
 

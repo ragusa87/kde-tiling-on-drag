@@ -6,6 +6,8 @@ install: build
 	plasmapkg2 -t kwinscript -s $(PROJECT_NAME) \
 		&& plasmapkg2 -u $(KWINPKG_FILE) \
 		|| plasmapkg2 -i $(KWINPKG_FILE)
+uninstall:
+	plasmapkg2 -t kwinscript -r $(PROJECT_NAME)
 debug:
 	qdbus org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.showInteractiveKWinConsole
 debug-run: build
@@ -24,11 +26,11 @@ compile:
 	@npx tsc
 clear:
 	rm -f "$(KWINPKG_FILE)"
+	rm -Rf build
+	rm -f contents/code/main.js
 lint:
 	npx eslint $(MAIN_FILE)
 build: clear compile
-	rm -f "$(KWINPKG_FILE)"
-	rm -Rf build;
 	mkdir -p build/contents/code
 	cp -r contents/code build/contents/
 	@find "build/" '(' -name "*.ts" ')' -delete

@@ -21,7 +21,6 @@
 /* KWin global objects */
 declare var workspace: WorkspaceWrapper;
 declare var options: Options;
-declare let print: (...values: any[]) => void;
 
 
 declare interface Signal<T> {
@@ -42,5 +41,25 @@ interface QTimer {
 
 
 /* Common Javascript globals */
-declare let console: any;
+
+
+// QJSEngine::ConsoleExtension https://doc.qt.io/qt-5/qjsengine.html#ConsoleExtension-enum
+interface Console {
+    assert(condition?: boolean, ...data: any[]): void;
+    debug(...data: any[]): void;
+    exception(message?: string, ...optionalParams: any[]): void;
+    info(...data: any[]): void;
+    log(...data: any[]): void;
+    error(...data: any[]): void;
+    time(label?: string): void;
+    timeEnd(label?: string): void;
+    trace(...data: any[]): void;
+    count(label?: string): void;
+    warn(...data: any[]): void;
+    print(...data: any[]): void;
+}
+
+
+declare let console: Console;
 //declare let setTimeout: any;
+//declare let print: (...values: any[]) => void;

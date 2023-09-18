@@ -8,7 +8,7 @@ It will not split or add areas on the fly, the window is only resized to an exis
 Resources:
 * KWin documentation <https://develop.kde.org/docs/plasma/kwin/api/>
 * Plasma's MR that adds Tiling support <https://invent.kde.org/plasma/kwin/-/merge_requests/2560/diffs>
-
+* KDE's Scripting support <https://invent.kde.org/plasma/kwin/-/blame/master/src/scripting/scripting.cpp#L210>
 Inspired by:
 * <https://github.com/esjeon/krohnkite>
 * <https://github.com/Bismuth-Forge/bismuth>

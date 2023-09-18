@@ -6,24 +6,24 @@ class Tiler{
             this.attachClient(d);
         });
 
-        workspace.clientAdded.connect(this.attachClient);
-        workspace.clientRemoved.connect(this.detachClient);
+        workspace.clientAdded.connect((client: AbstractClient) => this.attachClient(client));
+        workspace.clientRemoved.connect((client: AbstractClient) => this.detachClient(client));
     };
 
-    log(...values: any[]){
-        print(...values);
+    log(value: any){
+        console.log(value);
     }
 
 
     attachClient(client: AbstractClient){
         this.log(`attachClient ${client.resourceName}`);
-        client.clientFinishUserMovedResized.connect(this.tileClient);
+        client.clientFinishUserMovedResized.connect((client: AbstractClient) => this.tileClient(client));
         this.tileClient(client);
     }
 
     detachClient(client: AbstractClient){
         this.log(`detachClient  ${client.resourceName}`);
-        client.clientFinishUserMovedResized.disconnect(this.tileClient);
+        client.clientFinishUserMovedResized.disconnect((client: AbstractClient) => this.tileClient(client));
     }
 
     getCenter(geomerty: QRect){
@@ -34,7 +34,7 @@ class Tiler{
     }
 
     tileClient(client: AbstractClient){
-        if(false === this.isSupportedClient(client)){
+        if(! this.isSupportedClient(client)){
             return;
         }
 
@@ -52,5 +52,5 @@ class Tiler{
         return client.normalWindow;
     }
 }
-
+// Starting...
 new Tiler();

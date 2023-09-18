@@ -1,20 +1,16 @@
 {
     "paths": {
         "*": ["contents/code/extern/*.d.ts"],
-        "**": ["contents/code/*.d.ts"],
-        "***": ["contents/code/*.d.ts"]
+        "**": ["contents/code/*.d.ts"]
     },
     "exclude": ["build/**"],
     "compileOnSave": true,
     "compilerOptions": {
-        "target": "es2016",
-        "module": "ES6",
-        "noEmitOnError": false,
+        //"target": "ES2016", // ES2016 seems supported by qjsengine, ES2017 is not fully supported (date.formatToParts is not, Object.entries is)
+        "lib": ["es2015"],
         "removeComments": true,
-        "lib": ["es5", "ES2015", "ES2016"],
-        "alwaysStrict": true,
-        "strict": true,
-        "moduleResolution": "node",
-        "module": "ES6"
+        "alwaysStrict": false,
+        "module": "None", // KWin's script has no module support implemented
+        "strict": true
     }
 }

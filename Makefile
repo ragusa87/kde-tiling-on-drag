@@ -1,36 +1,36 @@
 PROJECT_NAME = kde-tilling-on-drag
 KWINPKG_FILE=$(PROJECT_NAME).kwinscript
 MAIN_FILE=contents/code/main.js
+MAIN_FILE_TYPESCRIPT=contents/code/main.ts
 
-install: build
+install: build # Install script
 	plasmapkg2 -t kwinscript -s $(PROJECT_NAME) \
 		&& plasmapkg2 -u $(KWINPKG_FILE) \
 		|| plasmapkg2 -i $(KWINPKG_FILE)
-uninstall:
+uninstall: # Uninstall script
 	plasmapkg2 -t kwinscript -r $(PROJECT_NAME)
-debug:
-	qdbus org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.showInteractiveKWinConsole
-debug-run: build
-	bin/load-script.sh "$(MAIN_FILE)" "$(PROJECT_NAME)-test"
-debug-stop:
-	bin/load-script.sh "unload" "$(PROJECT_NAME)-test"
-debug-logs:
+
+reload: build # Reinstall script and reload it (must be activated in kwin settings)
+	dbus-send --session --print-reply=literal --dest="org.kde.KWin" "/Scripting" "org.kde.kwin.Scripting.unloadScript" string:"$(PROJECT_NAME)"
+	@make install
+	dbus-send --session --print-reply=literal --dest="org.kde.KWin" "/Scripting" "org.kde.kwin.Scripting.start"
+
+debug-logs: # Show kwin logs
 	journalctl -f -t kwin_wayland
-debug-console:
+debug-console: # Open interactive console
 	plasma-interactiveconsole
-list:
+list: # help
 	@grep '^[^#[:space:]].*:' Makefile
-compile:
-	@rm -Rf node_modules
-	@npm install typescript
-	@npx tsc
-clear:
+compile: # Compile typescript
+	npx tsc
+clear: # Clear build files and artifacts
 	rm -f "$(KWINPKG_FILE)"
 	rm -Rf build
 	rm -f contents/code/main.js
-lint:
-	npx eslint $(MAIN_FILE)
-build: clear compile
+	npm install
+lint: clear # Lint
+	npx eslint $(MAIN_FILE_TYPESCRIPT)
+build: clear compile # Build package
 	mkdir -p build/contents/code
 	cp -r contents/code build/contents/
 	@find "build/" '(' -name "*.ts" ')' -delete

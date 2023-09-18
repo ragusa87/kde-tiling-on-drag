@@ -10,7 +10,7 @@
         "no-conditional-assignment": false,
         "one-variable-per-declaration": false,
         "prefer-for-of": false,
-        "variable-name": [true, "allow-leading-underscore"]
-    },
-    "rulesDirectory": []
+        "variable-name": [true, "allow-leading-underscore"],
+        "no-console": [true, "warning"]
+    }
 }

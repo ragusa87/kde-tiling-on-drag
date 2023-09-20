@@ -111,7 +111,14 @@ class Tiler{
         if(root === null){
             console.debug(`no root tile for screen ${client.screen} ??`);
         }
-        return (root.tiles || []);
+        let tiles = (root.tiles || []);
+        tiles.forEach((tile2) => {
+            if(tile2.parent !== null)
+            {
+                tiles.push(tile2.parent);
+            }
+        });
+        return tiles;
     }
 
     // Check if the client is supported
@@ -130,6 +137,7 @@ class Tiler{
         const otherClients = this.getOtherClientsOnSameScreen(client).filter((client2: AbstractClient) =>  !client2.minimized);
         const answer =  otherClients.length === 0 && client.maximizable && ! client.minimized
         console.debug(`shouldMaximize ${this.clientToString(client)} - minimized ? ${client.minimized} maximizable ? ${client.maximizable}, other windows ? ${otherClients.length} => ${answer}`)
+        console.debug(otherClients.map((client2: AbstractClient) => `${this.clientToString(client2)}`));
         return answer
 
     }
@@ -143,8 +151,9 @@ class Tiler{
     // Find a tile that is empty if any
     private getFreeTile(client: AbstractClient) : Tile|null {
         // Browse all tiles on the same screen
+        // FIXME: Avoid getting the root tile and blacklist the tile you want to move from
         const freeTiles = this.getTilesInSameScreen(client).filter(tile => {
-            return tile.windows.length === 0;
+            return tile.windows.length === 0
         })
 
         return freeTiles[0] ?? null;
@@ -154,40 +163,54 @@ class Tiler{
         // Re-tile other windows on the same screen
         const otherClients = this.getOtherClientsOnSameScreen(client).filter((localClient: AbstractClient) =>  !localClient.minimized);
         otherClients.forEach((otherClient: AbstractClient) => {
+
+            // If the client can be maximized, just do that.
+            if(this.shouldMaximize(otherClient)){
+                this.maximize(otherClient);
+                return false; // end the loop
+            }
+
+            // Re-tile client that are not tiled
+            if (otherClient.tile == null) {
+                this.doTile(otherClient);
+            }
+        })
+
+        // Make sure client are not sharing a tile with another client when possible
+        otherClients.forEach((otherClient: AbstractClient) => {
+
             if(this.getTilesInSameScreen(otherClient).length === 0){
                 console.debug("no tiles in current screen ??");
             }
-            // If there is a client already using the same tile, move it to another tile
-            this.getTilesInSameScreen(otherClient).every((tile: Tile) => {
 
-                // If the client can be maximized, just do that.
-                if(this.shouldMaximize(otherClient)){
-                    this.maximize(otherClient);
-                    return false; // end the loop
-                }
-
-                const otherClientWithSameTile = this.getOtherClientsOnSameScreen(otherClient).filter((clientWithSameTile: AbstractClient) => clientWithSameTile.tile === tile);
-                if(otherClientWithSameTile.length === 0){
-                    console.debug(`no other client sharing the same tile ${tile} with ${this.clientToString(otherClient)}`);
+            if(! this.sameTile(client,otherClient)){
+                    console.debug(`no other client sharing the same tile ${client.tile} with ${this.clientToString(otherClient)} ${otherClient.tile}`);
 
                     return true; // continue the loop, this tile is okay
-                }
+            }
 
-                // Search for an empty tile and use it
-                const bestEmptyTile = this.getFreeTile(otherClient);
-                if(bestEmptyTile !== null){
-                    this.log(`re-tile ${this.clientToString(otherClient)} to another tile ${bestEmptyTile}`);
-                    otherClient.tile = bestEmptyTile
-                    return false; // end the loop
-                }
+            console.debug(`${this.clientToString(client)} and ${this.clientToString(otherClient)} share the same tile`)
 
-                // We do not know what to do, just tile it on top of another client
-                this.log(`re-tile ${this.clientToString(otherClient)} somewhere`);
-                this.doTile(otherClient);
+            // Search for an empty tile and use it
+            const bestEmptyTile = this.getFreeTile(otherClient);
+            if(bestEmptyTile !== null){
+                this.log(`re-tile ${this.clientToString(otherClient)} to another tile ${bestEmptyTile}`);
+                otherClient.tile = bestEmptyTile
                 return false; // end the loop
-            });
+            }
+
+            // We do not know what to do, just tile it on top of another client
+            this.log(`re-tile ${this.clientToString(otherClient)} somewhere`);
+            this.doTile(otherClient);
+            return false; // end the loop
 
         });
+    }
+
+    private sameGeometry(one: QRect, two: QRect) {
+        const result =  one.x === two.x && one.y === two.y && one.height === two.height && one.width === two.height;
+        console.debug(`x: ${one.x}-${two.x} y: ${one.y}-${two.y} h: ${one.height}-${two.height} w: ${one.width}-${two.width} => ${result}`)
+        return result;
     }
 
     private isSameActivity(client: AbstractClient, otherClient: AbstractClient) : boolean {
@@ -195,6 +218,15 @@ class Tiler{
         // TODO Maybe we need to sort the activities list before comparing ?
         return client.activities.length === 0 || otherClient.activities.length === 0 || client.activities.join(",") === otherClient.activities.join(",");
     }
+
+    private sameTile(client: AbstractClient, otherClient: AbstractClient) {
+        // If there is a client already using the same tile, move it to another tile
+        if(otherClient.tile === null || client.tile === null){
+            return false;
+        }
+
+        return otherClient.tile === client.tile || this.sameGeometry(otherClient.tile.absoluteGeometry, client.tile.absoluteGeometry);
+     }
 }
 
 (new Tiler()).log("Starting");

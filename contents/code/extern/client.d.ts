@@ -54,7 +54,7 @@ declare interface AbstractClient extends Toplevel {
     resourceClass: QByteArray;
     // windowRole:
     // minimizedChanged: Signal
-readonly desktopWindow: boolean;
+    readonly desktopWindow: boolean;
     readonly dock: boolean;
     readonly toolbar: boolean;
     readonly menu: boolean;
@@ -139,7 +139,7 @@ readonly desktopWindow: boolean;
     // output: number;
 
     // signals
-    desktopPresenceChanged: Signal<(client: AbstractClient, desktop: number) => void>;
+    //desktopPresenceChanged: Signal<(client: AbstractClient, desktop: number) => void>; => Removed by https://invent.kde.org/plasma/kwin/-/merge_requests/3677
     desktopChanged: Signal<() => void>;
     fullScreenChanged: Signal<() => void>;
     activitiesChanged: Signal<(client: AbstractClient) => void>;
@@ -147,6 +147,7 @@ readonly desktopWindow: boolean;
     clientFinishUserMovedResized: Signal<(client: AbstractClient) => void>;
     quickTileModeChanged: Signal<() => void>;
     minimizedChanged: Signal<() => void>;
+    outputChanged: Signal<() => void>;
 // Other signals:
 // objectNameChanged
 // stackingOrderChanged: Signal
@@ -305,7 +306,7 @@ declare interface WorkspaceWrapper {
     // idk what user does
     clientFullScreenSet: Signal<(client: AbstractClient, fullscreen: boolean, user: any) => void>;
     // signals for workspace
-    currentDesktopChanged: Signal<(desktop: number, client: AbstractClient) => void>;
+    currentDesktopChanged: Signal<(oldDesktop: number, client: AbstractClient) => void>;
     currentActivityChanged: Signal<(activity: string) => void>;
 }
 declare interface Options {

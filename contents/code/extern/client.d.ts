@@ -232,8 +232,7 @@ declare interface Tile {
     padding: number;
     split(direction: LayoutDirection): void;
     remove(): void;
-    // whether the engine generated the tile or not
-    generated: boolean | undefined;
+    canBeRemoved: boolean;
 }
 declare enum LayoutDirection {
     Floating = 0,

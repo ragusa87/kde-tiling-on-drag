@@ -105,20 +105,33 @@ class Tiler{
     }
 
     // Get all tiles on the same screen
-    getTilesInSameScreen(client: AbstractClient){
+    getTilesInSameScreen(client: AbstractClient): Tile[]{
         const tileManager = workspace.tilingForScreen(client.screen);
         const root = tileManager.rootTile;
         if(root === null){
             console.debug(`no root tile for screen ${client.screen} ??`);
+            return [];
         }
         let tiles = (root.tiles || []);
         tiles.forEach((tile2) => {
-            if(tile2.parent !== null)
+
+            tiles.push(tile2);
+            if(tile2.tiles !== null)
             {
-                tiles.push(tile2.parent);
+                tile2.tiles.forEach((tile3: Tile) => {
+                    tiles.push(tile3);
+                });
             }
         });
-        return tiles;
+
+        // Remove duplicates
+        tiles = tiles.filter(function(item, pos) {
+            return tiles.indexOf(item) == pos;
+        })
+
+        return tiles.filter((tile: Tile) => {
+            return tile.canBeRemoved; // Skipp the root tile
+        });
     }
 
     // Check if the client is supported

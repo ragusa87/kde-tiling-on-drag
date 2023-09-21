@@ -31,7 +31,8 @@ class Tiler{
                 return;
             }
             this.log(`event: clientMinimized: ${client.resourceName}`)
-            this.tileClient(client)
+            client.tile = null;
+            this.retileOther(client)
         });
     };
 
@@ -49,7 +50,7 @@ class Tiler{
     detachClient(client: AbstractClient){
         this.log(`> detachClient  ${client.resourceName}`);
         client.clientFinishUserMovedResized.disconnect((client2: AbstractClient) => this.tileClient(client2));
-
+        client.tile = null;
         this.retileOther(client);
     }
 
@@ -60,11 +61,11 @@ class Tiler{
     }
 
     tileClient(client: AbstractClient){
-        this.log(`> tileClient ${this.clientToString(client)}`);
+        //this.log(`> tileClient ${this.clientToString(client)}`);
 
         // Un-maximize all windows on the same screen (maximized is not available on AbstractClient)
         this.getOtherClientsOnSameScreen(client).filter((localClient: AbstractClient) => !localClient.minimized).forEach((notMinimizedClient: AbstractClient) => {
-            this.log(`unmaximize ${this.clientToString(notMinimizedClient)}`);
+            //this.log(`unmaximize ${this.clientToString(notMinimizedClient)}`);
             notMinimizedClient.setMaximize(false,false)
             notMinimizedClient.tile = null;
         });
@@ -104,34 +105,58 @@ class Tiler{
         })
     }
 
-    // Get all tiles on the same screen
-    getTilesInSameScreen(client: AbstractClient): Tile[]{
+
+    getAllTiles(client: AbstractClient){
         const tileManager = workspace.tilingForScreen(client.screen);
         const root = tileManager.rootTile;
         if(root === null){
             console.debug(`no root tile for screen ${client.screen} ??`);
             return [];
         }
-        let tiles = (root.tiles || []);
-        tiles.forEach((tile2) => {
-
-            tiles.push(tile2);
-            if(tile2.tiles !== null)
-            {
-                tile2.tiles.forEach((tile3: Tile) => {
-                    tiles.push(tile3);
-                });
+        let tiles: Tile[] = [];
+        let toHandle: Tile[] = [root];
+        // Get all tiles
+        while(toHandle.length > 0){
+            const tile = toHandle.pop();
+            if(tile === null || tile === undefined){
+                continue;
             }
-        });
+            if(! tiles.includes(tile)){
+                tiles.push(tile);
+            }
+            (tile.tiles ?? []).forEach((subTile: Tile) => {
+                toHandle.push(subTile);
+            });
+        }
 
-        // Remove duplicates
+
+        // Remove duplicates https://stackoverflow.com/a/9229821
         tiles = tiles.filter(function(item, pos) {
             return tiles.indexOf(item) == pos;
         })
 
-        return tiles.filter((tile: Tile) => {
-            return tile.canBeRemoved; // Skipp the root tile
+        // Remove root tile
+        tiles = tiles.filter((tile: Tile) => {
+            return tile !== root;
+        })
+
+        return tiles;
+    }
+    // Get a free tile that can be used
+    // FIXME: Avoid getting the root tile and blacklist the tile you want to move from
+    getFreeTile(client: AbstractClient): Tile|null{
+
+        let tiles = this.getAllTiles(client);
+
+        console.log(`tiles: ${tiles.length} : ${tiles.map((tile: Tile) => `${tile.toString()} - ${this.getClientOnTile(tile).length}`).join(", ")}`)
+        // Keep only the free tiles
+        tiles = tiles.filter((tile: Tile) => {
+            return this.getClientOnTile(tile).length === 0;
         });
+
+
+        console.log(`free tiles found: ${tiles.length} : ${tiles.map((tile: Tile) => `${tile.toString()} - ${this.getClientOnTile(tile).length}`).join(", ")}`)
+        return tiles[0] ?? null;
     }
 
     // Check if the client is supported
@@ -149,8 +174,10 @@ class Tiler{
         // We do not have any other clients on the same screen that are not minimized
         const otherClients = this.getOtherClientsOnSameScreen(client).filter((client2: AbstractClient) =>  !client2.minimized);
         const answer =  otherClients.length === 0 && client.maximizable && ! client.minimized
-        console.debug(`shouldMaximize ${this.clientToString(client)} - minimized ? ${client.minimized} maximizable ? ${client.maximizable}, other windows ? ${otherClients.length} => ${answer}`)
-        console.debug(otherClients.map((client2: AbstractClient) => `${this.clientToString(client2)}`));
+
+        // const stringListOfOtherWindow = otherClients.map((client2: AbstractClient) => `${this.clientToString(client2)}`);
+        // console.debug(`shouldMaximize ${this.clientToString(client)} - minimized ? ${client.minimized} maximizable ? ${client.maximizable}, other windows ? ${otherClients.length} (${stringListOfOtherWindow.join(", ")}) => ${answer}`)
+
         return answer
 
     }
@@ -159,17 +186,6 @@ class Tiler{
         client.tile = null // Remove the tile, so it will be maximized full screen
         // Fixme: Sometimes maximize does not work, find why
         client.setMaximize(true,true);
-    }
-
-    // Find a tile that is empty if any
-    private getFreeTile(client: AbstractClient) : Tile|null {
-        // Browse all tiles on the same screen
-        // FIXME: Avoid getting the root tile and blacklist the tile you want to move from
-        const freeTiles = this.getTilesInSameScreen(client).filter(tile => {
-            return tile.windows.length === 0
-        })
-
-        return freeTiles[0] ?? null;
     }
 
     private retileOther(client: AbstractClient) {
@@ -192,17 +208,13 @@ class Tiler{
         // Make sure client are not sharing a tile with another client when possible
         otherClients.forEach((otherClient: AbstractClient) => {
 
-            if(this.getTilesInSameScreen(otherClient).length === 0){
-                console.debug("no tiles in current screen ??");
-            }
-
             if(! this.sameTile(client,otherClient)){
-                    console.debug(`no other client sharing the same tile ${client.tile} with ${this.clientToString(otherClient)} ${otherClient.tile}`);
+                    // console.debug(`no other client sharing the same tile ${client.tile} with ${this.clientToString(otherClient)} ${otherClient.tile}`);
 
                     return true; // continue the loop, this tile is okay
             }
 
-            console.debug(`${this.clientToString(client)} and ${this.clientToString(otherClient)} share the same tile`)
+            // console.debug(`${this.clientToString(client)} and ${this.clientToString(otherClient)} share the same tile`)
 
             // Search for an empty tile and use it
             const bestEmptyTile = this.getFreeTile(otherClient);
@@ -218,12 +230,32 @@ class Tiler{
             return false; // end the loop
 
         });
+
+        // Detect if there is tiles that are empty (due to windows closing/minimizing)
+        const emptyTiles = this.getAllTiles(client).filter((tile: Tile) => {
+            return this.getClientOnTile(tile).length === 0;
+        })
+
+        // Detect if there is tiles with multiple windows
+        const tilesWithMultipleWindows = this.getAllTiles(client).filter((tile: Tile) => {
+            return this.getClientOnTile(tile).length > 1;
+        });
+
+        // Move a window to an empty tile
+        if(emptyTiles.length > 0 && tilesWithMultipleWindows.length > 0){
+            tilesWithMultipleWindows.every((tile: Tile) => {
+                const client = this.getClientOnTile(tile)[0];
+                console.log(`re-tile a client ${this.clientToString(client)} to an empty tile ${emptyTiles[0].toString()}`);
+                client.tile = emptyTiles[0];
+
+                return false; // Exit the loop.
+            });
+        }
     }
 
     private sameGeometry(one: QRect, two: QRect) {
-        const result =  one.x === two.x && one.y === two.y && one.height === two.height && one.width === two.height;
-        console.debug(`x: ${one.x}-${two.x} y: ${one.y}-${two.y} h: ${one.height}-${two.height} w: ${one.width}-${two.width} => ${result}`)
-        return result;
+        return  one.x === two.x && one.y === two.y && one.height === two.height && one.width === two.height;
+        //console.debug(`x: ${one.x}-${two.x} y: ${one.y}-${two.y} h: ${one.height}-${two.height} w: ${one.width}-${two.width} => ${result}`)
     }
 
     private isSameActivity(client: AbstractClient, otherClient: AbstractClient) : boolean {
@@ -240,6 +272,10 @@ class Tiler{
 
         return otherClient.tile === client.tile || this.sameGeometry(otherClient.tile.absoluteGeometry, client.tile.absoluteGeometry);
      }
+
+    private getClientOnTile(tile: Tile) {
+        return tile.windows.filter(this.isSupportedClient).filter((tile: AbstractClient) => !tile.minimized)
+    }
 }
 
 (new Tiler()).log("Starting");

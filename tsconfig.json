@@ -7,7 +7,7 @@
     "compileOnSave": true,
     "compilerOptions": {
         //"target": "ES2016", // ES2016 seems supported by qjsengine, ES2017 is not fully supported (date.formatToParts is not, Object.entries is)
-        "lib": ["es2015"],
+        "lib": ["es2015", "ES2016.Array.Include"],
         "removeComments": true,
         "alwaysStrict": false,
         "module": "None", // KWin's script has no module support implemented

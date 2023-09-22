@@ -30,7 +30,7 @@ declare interface Api {
 declare interface Toplevel {
     readonly popupWindow: boolean;
     readonly frameGeometry: QRect;
-    readonly desktop: number;
+    desktop: number;
     frameGeometryChanged: Signal<(client: AbstractClient, oldGeometry: QRect) => void>;
     windowClosed: Signal<(client: AbstractClient, deleted: object) => void>;
     screenChanged: Signal<() => void>;
@@ -40,12 +40,12 @@ declare interface Toplevel {
 declare interface AbstractClient extends Toplevel {
     // objectName
     // bufferGeometry: QRectF
-    // pos: QPointF
-    // size: QSizeF
-    // x: number
-    // y: number
-    // width: number
-    // height: number
+    readonly pos: QPoint
+    readonly size: QSize
+    readonly x: number
+    readonly y: number
+    readonly width: number
+    readonly height: number
     // opacity: number
     screen: number;
     // output: number; Unable to handle unregistered datatype 'KWin::Output*'
@@ -112,7 +112,7 @@ declare interface AbstractClient extends Toplevel {
     readonly geometry: QRect;
     frameGeometry: QRect; //  is read/write for abstractclient
     readonly move: boolean;
-    readonly resize: boolean;
+    //readonly resize: boolean;
     readonly decorationHasAlpha: boolean;
     noBorder: boolean;
     readonly providesContextHelp: boolean;
@@ -148,6 +148,7 @@ declare interface AbstractClient extends Toplevel {
     quickTileModeChanged: Signal<() => void>;
     minimizedChanged: Signal<() => void>;
     outputChanged: Signal<() => void>;
+    tileChanged: Signal<(tile: Tile) => void>; // test this
 // Other signals:
 // objectNameChanged
 // stackingOrderChanged: Signal

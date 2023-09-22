@@ -16,7 +16,7 @@ class Config {
     logMaximize: boolean = true;
     logGetFreeTile: boolean = true;
     logWindowProperties: boolean = false;
-    logDebugTree: boolean = false;
+    logDebugTree: boolean = true;
 
     canGetFreeTileOnAllOutputs: boolean = true;
     canHandleMultipleOutputs: boolean = false; // TODO Not working yet
@@ -38,6 +38,7 @@ class Tiler{
     config: Config;
     clientFinishUserMovedResizedListener: (client: AbstractClient) => void;
     desktopChangedListener: () => void;
+    tileChangedListener: (tile: Tile) => void;
 
     constructor(config: Config){
         this.config = config;
@@ -47,11 +48,16 @@ class Tiler{
             this.tileClient(client)
         };
 
+        this.tileChangedListener = (tile: Tile) => {
+            //this.event( `tileChanged ${tile?.toString()}`)
+            //this.debugTree();
+        }
+
         this.desktopChangedListener = () => {
-            this.event(  `currentDesktopChanged`)
+            this.event(`currentDesktopChanged`)
             // We do not know the previous desktop, so we need to re-tile all desktops
             for(let i = 1; i <= workspace.desktops; i++){
-                this.tileDesktop(i);
+                this.handleMaximizeMinimize(i);
             }
         }
 
@@ -133,6 +139,7 @@ class Tiler{
         this.doLog(LogLevel.INFO, `> attachClient ${this.clientToString(client)}`);
         client.clientFinishUserMovedResized.connect(this.clientFinishUserMovedResizedListener);
         client.desktopChanged.connect(this.desktopChangedListener);
+        client.tileChanged.connect(this.tileChangedListener);
 
         //client.desktop = workspace.activeScreen;
 
@@ -144,6 +151,8 @@ class Tiler{
         this.doLog(LogLevel.INFO, `> detachClient ${this.clientToString(client)}`);
         client.clientFinishUserMovedResized.disconnect(this.clientFinishUserMovedResizedListener);
         client.desktopChanged.disconnect(this.desktopChangedListener);
+        client.tileChanged.disconnect(this.tileChangedListener);
+
         client.tile = null;
         this.retileOther(client);
     }
@@ -202,24 +211,13 @@ class Tiler{
 
         this.debug(`> tileClient ${this.clientToString(client)} - screen ${client.desktop} // ${workspace.activeScreen}`);
 
-
-        // Un-maximize all windows on the same screen (maximized is not available on AbstractClient)
-        this.getOtherClientsOnSameScreen(client).filter((localClient: AbstractClient) => !localClient.minimized).forEach((notMinimizedClient: AbstractClient) => {
-            this.unmaximize(notMinimizedClient);
-        });
-
-        // If this is the only not-minimized window on the screen, maximize it.
-        if(this.shouldMaximize(client)){
-            this.maximize(client)
-        }else {
-            this.doTile(client);
-        }
+        this.doTile(client);
 
         // Re-tile other windows on the same screen
-        this.retileOther(client);
-
-        this.debugTree();
-
+        // TODO Delay, the information are not yet updated, the client is still not assigned to the tile
+        setTimeout(() => {
+            this.retileOther(client);
+        },   500);
     }
 
     doTile(client: AbstractClient){
@@ -233,20 +231,10 @@ class Tiler{
         // Ask where is the best location for this current window and assign it to the client.
         let bestTileForPosition = tileManager.bestTileForPosition(center.x, center.y);
 
-        // If there is a tile available, use it instead
-        const freeTile = this.getFreeTile(client, false);
-        if(this.config.canRealocateNewWindow && bestTileForPosition !== null && this.getClientOnTile(bestTileForPosition).length > 0 && freeTile !== null){
-            this.debug(`tile is already used by ${this.getClientOnTile(bestTileForPosition).map((client: AbstractClient) => this.clientToString(client)).join(", ")}, using free tile instead ${freeTile.toString()} for ${this.clientToString(client)}`)
-            bestTileForPosition = freeTile;
-        }
+
+        this.debug(`doTile: ${this.clientToString(client)} to ${bestTileForPosition?.toString()}`);
+
         client.tile = bestTileForPosition
-    }
-    // Get all clients on the same screen
-    // @see {this.getOtherClientsOnSameDesktop}
-    getOtherClientsOnSameScreen(client: AbstractClient) {
-        return this.getOtherClientsOnSameDesktop(client).filter((otherClient: AbstractClient) => {
-            return otherClient.screen === client.screen;
-        });
     }
 
     getAllTilesOnAllOutput(favoriteOutput : number) {
@@ -349,157 +337,95 @@ class Tiler{
     }
 
     // Used for logging
-    clientToString(client: AbstractClient){
+    clientToString(client: AbstractClient|undefined|null){
+        if(!client){
+            return `null`
+        }
         return `${client.resourceName} ${client.internalId}`;
     }
 
-    // If there is only one window on the screen (no other window), maximize it
-    private shouldMaximize(client: AbstractClient): boolean {
-        if(!this.config.maximizeOnSingleWindow){
-            return false;
-        }
-        // We do not have any other clients on the same screen that are not minimized
-        const otherClients = this.getOtherClientsOnSameScreen(client).filter((client2: AbstractClient) =>  !client2.minimized);
-        const answer =  otherClients.length === 0 && client.maximizable && ! client.minimized
-
-        const stringListOfOtherWindow = otherClients.map((client2: AbstractClient) => `${this.clientToString(client2)}`);
-        if(this.config.logMaximize) {
-            this.debug(`shouldMaximize ${this.clientToString(client)} - minimized ? ${client.minimized} maximizable ? ${client.maximizable}, other windows ? ${otherClients.length} (${stringListOfOtherWindow.join(", ")}) => ${answer}`)
-        }
-
-        return answer
-    }
-
-    /**
-     * Get all clients on the same desktop, Desktop N is spread across all screens.
-     * @param client
-     */
-    getOtherClientsOnSameDesktop(client: AbstractClient) {
-        return workspace.clientList().filter(this.isSupportedClient).filter((otherClient: AbstractClient) => {
-            const sameWindowId = client.internalId === otherClient.internalId; // Using internalId because it is working, unlike windowId that might be undefined.
-            const sameActivity = this.isSameActivity(client, otherClient);
-            const sameDesktop = client.desktop === otherClient.desktop || client.onAllDesktops || otherClient.onAllDesktops;
-            const sameScreen = this.config.canHandleMultipleOutputs || client.screen === otherClient.screen
-            return (!sameWindowId) && sameScreen && sameActivity && sameDesktop;
-        })
+    private getClientOnTile(tile: Tile) {
+        return tile.windows.filter(this.isSupportedClient).filter((otherClient: AbstractClient) => !otherClient.minimized)
     }
 
     private maximize(client: AbstractClient) {
 
         if(this.config.logMaximize){
-            this.doLog(LogLevel.INFO, `> maximize ${this.clientToString(client)} ${client.tile?.toString()} ${client.resize}`);
+            this.doLog(LogLevel.INFO, `> maximize ${this.clientToString(client)} ${client.tile?.toString()}`);
         }
+        // FIXME Sometime maximize is not working
+        const manager = workspace.tilingForScreen(client.screen);
 
-        // FIXME Force a root-tile so maximize will work when not empty
-        if(client.tile !== null){
-            client.tile = workspace.tilingForScreen(client.screen)?.rootTile
+        if(manager !== null && manager.rootTile !== null){
+            this.debug(`maximize ${this.clientToString(client)} - setFrameGeomerty`);
+            client.frameGeometry = manager.rootTile.absoluteGeometry
         }
         client.setMaximize(true,true);
+        client.tile = null;
     }
 
     private retileOther(client: AbstractClient) {
         this.debug(`re-tile other windows due to change on ${this.clientToString(client)}.`);
-        // Re-tile other windows on the same desktop
-        const otherClients = this.getOtherClientsOnSameDesktop(client).filter((localClient: AbstractClient) =>  !localClient.minimized);
-        otherClients.forEach((otherClient: AbstractClient) => {
 
-            // If the client can be maximized, just do that.
-            if(this.shouldMaximize(otherClient)){
-                this.maximize(otherClient);
-                return true; // continue the loop, this tile is okay
-            }
-
-            // tile client that are not tiled
-            if (otherClient.tile === null) {
-                this.doTile(otherClient);
-            }
+        // Tile all clients (this will un-maximize maximized window)
+        workspace.clientList().filter(this.isSupportedClient).filter((otherClient) => !otherClient.minimized).filter((otherClient: AbstractClient) => client !== otherClient).forEach((otherClient: AbstractClient) => {
+            this.doTile(otherClient); // We skip the client that changed
         })
 
-        // Make sure client are not sharing a tile with another client when possible
-        otherClients.every((otherClient: AbstractClient) => {
+        let freeTileOnScreens: Map<Number, Tile[]> = new Map();
+        const freeTilesOverall = []
 
-            if(! this.sameTile(client,otherClient)){
-                // this.debug(`no other client sharing the same tile ${client.tile} with ${this.clientToString(otherClient)} ${otherClient.tile}`);
 
-                return true; // continue the loop, this tile is okay
-            }
 
-            // Search for an empty tile and use it
-            const bestEmptyTile = this.getFreeTile(this.config.canHandleMultipleOutputs ? otherClient : client, false); //FIXME Should we use all screens ?
-            if(bestEmptyTile !== null){
-                this.doLog(LogLevel.INFO, `re-tile ${this.clientToString(otherClient)} to another tile ${bestEmptyTile} (tile already used by ${this.clientToString(client)})`)
-                otherClient.tile = bestEmptyTile
-                //this.retileOther(otherClient);
-
-                // Sometime maximize/unmaximize is not working when we change the maximized state of a window and the tile at the same time.
-                // So we do it again...
-                // if(this.shouldMaximize(otherClient)){
-                //     this.maximize(otherClient);
-                // }else{
-                //     this.unmaximize(otherClient)
-                // }
-
-                return false; // end the loop
-            }
-
-            // We do not know what to do, just tile it on top of another client
-            // TODO A real tiling manager will split a tile and move the client to the new tile
-            // TODO We could also just move window to a new desktop..
-            if(otherClient.tile === null) {
-                this.doLog(LogLevel.INFO, `tile ${this.clientToString(otherClient)} somewhere else (as the tile is already used)`);
-                this.doTile(otherClient);
-            }
-
-            return false; // end the loop
-
-        });
-
-        // Detect if there is tiles that are empty (due to windows closing/minimizing)
-        const emptyTiles = this.getAllTilesOnAllOutput(client.screen).filter((tile: Tile) => {
-            return this.getClientOnTile(tile).length === 0;
-        })
-
-        // Detect if there is tiles with multiple windows
-        const tilesWithMultipleWindows = this.getAllTilesOnAllOutput(client.screen).filter((tile: Tile) => {
-            return this.getClientOnTile(tile).length > 1;
-        });
-
-        // Move a window to an empty tile
-        if(emptyTiles.length > 0 && tilesWithMultipleWindows.length > 0){
-            tilesWithMultipleWindows.every((tile: Tile) => {
-                const client = this.getClientOnTile(tile)[0];
-                this.doLog(LogLevel.INFO, `re-tile a client ${this.clientToString(client)} to an empty tile ${emptyTiles[0].toString()} (empty tile found)`);
-                client.tile = emptyTiles[0];
-                this.retileOther(client);
-
-                return false; // Exit the loop.
+        this.getAllScreensNumbers(client.screen).forEach((screen: number) => {
+            // Process the list of free tiles
+            freeTileOnScreens.set(screen, []);
+            this.getAllTiles(screen).forEach((tile: Tile) => {
+                if (tile.windows.filter(this.isSupportedClient).filter((client: AbstractClient) => !client.minimized).length === 0) {
+                    // @ts-ignore
+                    freeTileOnScreens.get(screen).push(tile);
+                    freeTilesOverall.push(tile);
+                }
             });
-        }
+        });
+
+        // For each screen
+        this.getAllScreensNumbers(client.screen).forEach((screen: number) =>
+        {
+            const freeTileOnScreen = freeTileOnScreens.get(screen) ?? [];
+            // Move stacked window to a free tile if any
+            this.getAllTiles(screen).forEach((tile: Tile) => {
+
+                const otherClientsOnTile = this.getClientOnTile(tile);
+                const untilledClientsOnScreen = this.getUntiledClientOnScreen(screen);
+                this.debug(`Screen ${screen}, Tile ${tile.toString()} : has ${otherClientsOnTile.length} clients and ${freeTileOnScreen.length} free tiles. Clients: ${otherClientsOnTile.map((client: AbstractClient) => this.clientToString(client)).join(", ")})}`);
+                this.debug(`Screen ${screen} has ${untilledClientsOnScreen.length} untiled clients. ${untilledClientsOnScreen.map((client: AbstractClient) => this.clientToString(client)).join(", ")})}`)
+                if (otherClientsOnTile.length > 1 && freeTileOnScreen.length > 0) {
+                    this.moveClientToFreeTile(screen, client, otherClientsOnTile, freeTileOnScreen);
+                    return;
+                }
+                if(untilledClientsOnScreen.length > 0 && freeTileOnScreen.length > 0){
+                    this.moveClientToFreeTile(screen, client, untilledClientsOnScreen, freeTileOnScreen)
+                    return
+                }
+
+
+                if(otherClientsOnTile.length > 1 && freeTilesOverall.length > 0) {
+                    // TODO Could have moved the window to another screen
+                    this.debug(`could move one client from tile to a free one on another screen`);
+                }
+            });
+
+           // Minimize/maximize windows
+           this.handleMaximizeMinimize(screen);
+        })
     }
 
-    private sameGeometry(one: QRect, two: QRect) {
-        return false;
-        //return  one.x === two.x && one.y === two.y && one.height === two.height && one.width === two.height;
-        //this.debug(`x: ${one.x}-${two.x} y: ${one.y}-${two.y} h: ${one.height}-${two.height} w: ${one.width}-${two.width} => ${result}`)
-    }
 
     private isSameActivity(client: AbstractClient, otherClient: AbstractClient) : boolean {
         // empty activities means all activities
         // TODO Maybe we need to sort the activities list before comparing ?
         return client.activities.length === 0 || otherClient.activities.length === 0 || client.activities.join(",") === otherClient.activities.join(",");
-    }
-
-    private sameTile(client: AbstractClient, otherClient: AbstractClient) {
-        // If there is a client already using the same tile, move it to another tile
-        if(otherClient.tile === null || client.tile === null){
-            return false;
-        }
-
-        return otherClient.tile === client.tile || this.sameGeometry(otherClient.tile.absoluteGeometry, client.tile.absoluteGeometry);
-    }
-
-    private getClientOnTile(tile: Tile) {
-        return tile.windows.filter(this.isSupportedClient).filter((tile: AbstractClient) => !tile.minimized)
     }
 
     private tileDesktop(i: number) {
@@ -516,41 +442,92 @@ class Tiler{
 
     getUntiledClientOnScreen(screen: number) {
         return workspace.clientList().filter(this.isSupportedClient).filter((client: AbstractClient) => {
-            return client.screen === screen && client.tile === null;
+            return client.screen === screen && client.tile === null && !client.minimized;
         })
     }
 
     private unmaximize(client: AbstractClient) {
         if(this.config.logMaximize){
-            this.doLog(LogLevel.INFO, `> un-maximize ${this.clientToString(client)}`);
+            this.doLog(LogLevel.INFO, `> un-maximize ${this.clientToString(client)} - ${client.tile?.toString()}`);
         }
 
         // Force a tile so unmaximize will work
-        if(client.tile !== null){
-            client.tile = workspace.tilingForScreen(client.screen)?.rootTile
+        if(client.tile === null){
+            this.doTile(client);
         }
-
+        // FIXME Sometime un-maximize is not working
+        if(client.tile !== null){
+            this.debug(`un-maximize ${this.clientToString(client)} - setFrameGeomerty`);
+            client.frameGeometry = client.tile.absoluteGeometry
+            this.debug(`tile is occuped by ${this.getClientOnTile(client.tile).map((client: AbstractClient) => this.clientToString(client)).join(", ")}`);
+            this.debugTree()
+            if(this.getClientOnTile(client.tile).filter((otherClient: AbstractClient) => otherClient !== client).length > 0){
+                this.debug("un-maximize: there is another client on the same tile, re-tile it");
+                const freeTiles = this.getFreeTile(client);
+                client.tile = freeTiles ?? null;
+                client.frameGeometry = freeTiles?.absoluteGeometry ?? client.frameGeometry
+            }
+        }
         client.setMaximize(false,false)
+
+
     }
 
     private debugTree() {
         if(!this.config.logDebugTree){
             return;
         }
-        this.debug("> debugTree");
+        let output = "> debugTree\n";
         this.getAllScreensNumbers(0).forEach((screen: number) => {
-            this.debug(`screen ${screen} - ${workspace.clientList().filter(this.isSupportedClient).filter((client: AbstractClient) => client.screen === screen).length} clients on screen, untiled: ${this.getUntiledClientOnScreen(screen).length}`);
+            output += (`screen ${screen} - ${workspace.clientList().filter(this.isSupportedClient).filter((client: AbstractClient) => client.screen === screen).length} clients on screen, untiled: ${this.getUntiledClientOnScreen(screen).length} \n`);
+            output += `\tuntiled: ${this.getUntiledClientOnScreen(screen).map((client: AbstractClient) => this.clientToString(client)).join(", ")}\n`;
             this.getAllTiles(screen).forEach((tile: Tile) => {
-              this.debug(`screen ${screen} - tile ${tile.toString()} clients: ${this.getClientOnTile(tile).length} (un-filtered ${tile.windows.length})`)
+                output += (`screen ${screen} - tile ${tile.toString()} clients: ${this.getClientOnTile(tile).length} (un-filtered ${tile.windows.length})\n`)
               this.getClientOnTile(tile).forEach((client: AbstractClient) => {
-                  this.debug(`screen ${screen} - tile ${tile.toString()} => ${this.clientToString(client)}`);
+                  output += (`screen ${screen} - tile ${tile.toString()} => ${this.clientToString(client)}\n`);
               })
           })
         });
+        this.debug(output);
     }
 
     private event(message: string) {
         this.doLog(LogLevel.ERROR, `> Event ${message}`);
+    }
+
+    private handleMaximizeMinimize(screen: Number) {
+        // TODO Use getOtherClientsOnSameScreen
+
+        const clientsOnThisScreen = workspace.clientList().filter(this.isSupportedClient).filter((otherClient: AbstractClient) => otherClient.screen === screen ).filter((otherClient: AbstractClient) => !otherClient.minimized);
+        this.debug(`change maximize for screen ${screen} , ${clientsOnThisScreen.length} clients: \n${
+            clientsOnThisScreen.map((client: AbstractClient) => ` - ${this.clientToString(client)}`).join(`\n`)
+        }`);
+        switch (clientsOnThisScreen.length) {
+            case 1:
+                this.maximize(clientsOnThisScreen[0]);
+                break;
+            default:
+                clientsOnThisScreen.forEach((clientOnThisScreen: AbstractClient) => { this.unmaximize(clientOnThisScreen) });
+                break;
+        }
+    }
+
+    private moveClientToFreeTile(screen: Number, client: AbstractClient, otherClientsOnTile: AbstractClient[], freeTileOnScreen: Tile[]) {
+        this.debug(`Move one client from tile to a free one`);
+        let clientToMove = otherClientsOnTile.pop();
+        if (clientToMove === client) {
+
+            clientToMove = otherClientsOnTile.pop();
+            this.debug(`Skip ${this.clientToString(client)} as it is the one that changed, use ${this.clientToString(clientToMove)} instead`)
+
+        }
+        if (clientToMove) {
+            this.debug(`Move ${this.clientToString(clientToMove)} from ${clientToMove.tile?.toString()} to ${freeTileOnScreen[0].toString()}`);
+            // @ts-ignore freeTileOnScreen is not empty
+            clientToMove.tile = freeTileOnScreen.pop();
+            this.handleMaximizeMinimize(screen);
+            return;
+        }
     }
 }
 

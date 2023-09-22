@@ -35,10 +35,9 @@ declare interface QSignal {
 
 interface QTimer {
     timeout: QSignal;
-    start(duration: number): void;
+    start(durationMs: number): void;
     stop(): void;
 }
-
 
 /* Common Javascript globals */
 
@@ -59,6 +58,8 @@ interface Console {
     print(...data: any[]): void;
 }
 
+
+declare let QTimer:  QQmlTimer;
 
 declare let console: Console;
 //declare let setTimeout: any;

@@ -32,6 +32,7 @@ declare interface Toplevel {
     readonly frameGeometry: QRect;
     desktop: number;
     frameGeometryChanged: Signal<(client: AbstractClient, oldGeometry: QRect) => void>;
+    clientGeometryChanged: Signal<(client: AbstractClient, oldGeometry: QRect) => void>;
     windowClosed: Signal<(client: AbstractClient, deleted: object) => void>;
     screenChanged: Signal<() => void>;
 }
@@ -148,7 +149,7 @@ declare interface AbstractClient extends Toplevel {
     quickTileModeChanged: Signal<() => void>;
     minimizedChanged: Signal<() => void>;
     outputChanged: Signal<() => void>;
-    tileChanged: Signal<(tile: Tile) => void>; // test this
+    geometryChanged: Signal<() => void>;
 // Other signals:
 // objectNameChanged
 // stackingOrderChanged: Signal
@@ -267,7 +268,7 @@ declare enum QuickTileFlag {
     Custom = 1 << 4,
     Horizontal = Left | Right,
     Vertical = Top | Bottom,
-    Maximize = Left | Right | Top | Bottom,
+    Maximize = 15,
 }
 
 declare interface TileManager {
@@ -292,6 +293,7 @@ declare interface WorkspaceWrapper {
     clientList(): AbstractClient[];
     clientArea(option: ClientAreaOption, screen: number, desktop: number): QRect;
     clientArea(option: ClientAreaOption, client: AbstractClient): QRect;
+    slotWindowMaximize: () => void
     // doesnt actually exist in api but convenient place to keep state
     tmpLastActiveClient: AbstractClient | null | undefined;
     previousActiveClient: AbstractClient | null | undefined;

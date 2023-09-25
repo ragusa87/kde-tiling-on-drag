@@ -14,14 +14,8 @@ enum LogLevel
 class Config {
     logLevel: LogLevel = LogLevel.DEBUG;
     logMaximize: boolean = true;
-    logGetFreeTile: boolean = true;
     logWindowProperties: boolean = false;
     logDebugTree: boolean = true;
-
-    canGetFreeTileOnAllOutputs: boolean = true;
-    canHandleMultipleOutputs: boolean = false; // TODO Not working yet
-    maximizeOnSingleWindow: boolean = true;
-    canRealocateNewWindow: boolean = false;
 }
 
 // KWin global objects exposes "QTimer" that can be used to implement setTimeout
@@ -242,13 +236,6 @@ class Tiler{
         client.tile = bestTileForPosition
     }
 
-    getAllTilesOnAllOutput(favoriteOutput : number) {
-        if(! this.config.canGetFreeTileOnAllOutputs) {
-            return this.getAllTiles(favoriteOutput);
-        }
-        return this.getAllTiles(...this.getAllScreensNumbers(favoriteOutput));
-    }
-
     getAllTiles(...screens: number[]): Tile[]{
         let tiles: Tile[] = [];
         screens.forEach((screen: number) => {
@@ -312,25 +299,7 @@ class Tiler{
         }
         return screens;
     }
-    // Get a free tile that can be used
-    getFreeTile(client: AbstractClient, onAllOutputs = true): Tile|null{
-        if(this.config.logGetFreeTile) {
-            this.debug(`Search for a free tile on ${onAllOutputs ? 'all output' :  `output ${client.screen}`} ? `);
-        }
 
-        let tiles = onAllOutputs ? this.getAllTilesOnAllOutput(client.screen) : this.getAllTiles(client.screen);
-        if(this.config.logGetFreeTile) {
-            this.debug(`tiles: ${tiles.length} : ${tiles.map((tile: Tile) => `${tile.toString()} - ${this.getClientOnTile(tile).length}`).join(", ")}`)
-        }
-        // Keep only the free tiles
-        tiles = tiles.filter((tile: Tile) => {
-            return this.getClientOnTile(tile).length === 0;
-        });
-        if(this.config.logGetFreeTile) {
-            this.debug(`free tiles found: ${tiles.length} : ${tiles.map((tile: Tile) => `${tile.toString()} - ${this.getClientOnTile(tile).length}`).join(", ")}`)
-        }
-        return tiles[0] ?? null;
-    }
 
     // Check if the client is supported
     isSupportedClient(client: AbstractClient){
@@ -356,16 +325,9 @@ class Tiler{
     private maximize(client: AbstractClient) {
         this.doLogIf(this.config.logMaximize,LogLevel.INFO, `> maximize ${this.clientToString(client)} ${client.tile?.toString()}`);
 
-        // const manager = workspace.tilingForScreen(client.screen);
-        // if(manager !== null && manager.rootTile !== null){
-        //     this.doLogIf(this.config.logMaximize, LogLevel.DEBUG,`maximize ${this.clientToString(client)} - setFrameGeomerty`);
-        //     client.frameGeometry = manager.rootTile.absoluteGeometry
-        // }
-
         client.tile = null;
         const MaximizeArea = 2; // TODO Read global enum instead
         client.frameGeometry = workspace.clientArea(MaximizeArea, client.screen, client.desktop);
-
     }
 
     private retileOther(client: AbstractClient) {
@@ -431,13 +393,6 @@ class Tiler{
         this.debugTree(client.desktop)
     }
 
-
-    private isSameActivity(client: AbstractClient, otherClient: AbstractClient) : boolean {
-        // empty activities means all activities
-        // TODO Maybe we need to sort the activities list before comparing ?
-        return client.activities.length === 0 || otherClient.activities.length === 0 || client.activities.join(",") === otherClient.activities.join(",");
-    }
-
     private tileDesktop(i: number, desktop: number, reason: string) {
         this.getUntiledClientOnScreen(i, desktop).forEach((client: AbstractClient) => {
             this.debug(`re-tile ${this.clientToString(client)} for screen ${i} and desktop ${desktop} - reorganization (${reason})`);
@@ -458,7 +413,7 @@ class Tiler{
 
         // Force a tile so unmaximize will work
         if(client.tile === null){
-            this.doLog(LogLevel.WARNING, `Force tiling an untiled window ${this.clientToString(client)}`)
+            this.doLogIf(this.config.logMaximize, LogLevel.WARNING, `Force tiling an untiled window ${this.clientToString(client)}`)
             this.doTile(client, "unmaximize without tile");
         }
 
@@ -468,6 +423,8 @@ class Tiler{
             client.tile.layoutDirection = client.tile.layoutDirection === 1 ? 2 : 1;
             client.tile.layoutDirection = oldLayoutDirection;
         }else{
+            this.doLogIf(this.config.logMaximize, LogLevel.WARNING, `Force tiling an untiled window ${this.clientToString(client)}`)
+
             // setMaximize is buggy,avoid using it while tiling...
             client.setMaximize(false,false)
         }
@@ -547,30 +504,6 @@ class Tiler{
         }
     }
 
-    private waitFor(signal: Signal<any>,client: AbstractClient, timeout = 5000) {
-        const myPromise :Promise<AbstractClient> = new Promise((resolve, reject) => {
-            let timeoutId: number | null = null;
-
-            const callbackFunction = function (){
-                if(timeoutId !== null){
-                    cancelTimeout(timeoutId);
-                }
-                resolve(client);
-                signal.disconnect(callbackFunction);
-            }
-
-            if(timeout > 0 ) {
-                setTimeout(() => {
-                    signal.disconnect(callbackFunction);
-                    reject("Timed-out")
-                }, timeout)
-            }
-
-            signal.connect(callbackFunction);
-        });
-
-        return myPromise;
-    }
     private doLogIf(enabled: boolean, level: LogLevel, message: string) {
         if(!enabled){
             return;

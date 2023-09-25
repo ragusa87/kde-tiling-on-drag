@@ -228,6 +228,7 @@ declare interface Tile {
     windows: AbstractClient[];
     absoluteGeometry: QRect;
     relativeGeometry: QRect;
+    absoluteGeometryInScreen: QRect;
     layoutDirection: LayoutDirection;
     oldRelativeGeometry: QRect | undefined;
     // null for root tile
@@ -235,7 +236,22 @@ declare interface Tile {
     padding: number;
     split(direction: LayoutDirection): void;
     remove(): void;
+    moveByPixels(point: QPoint): void; // not supported on horizontal and vertical layouts
+    positionInLayout: number;
     canBeRemoved: boolean;
+    isLayout: boolean;
+    isLayoutChanged(): boolean;
+    layoutModified: Signal<() => void>;
+    layoutDirectionChanged: Signal<() => LayoutDirection>;
+    // windowRemoved: Signal<any>;
+    // windowAdded: Signal<any>;
+    // childTilesChanged: Signal<any>;
+    // rowChanged: Signal<any>;
+    // paddingChanged: Signal<any>;
+    // windowGeometryChanged: Signal<() => void>;
+    // objectNameChanged: Signal<any>;
+    // absoluteGeometryChanged: Signal<() => void>;
+    // relativeGeometryChanged: Signal<() => void>;
 }
 declare enum LayoutDirection {
     Floating = 0,

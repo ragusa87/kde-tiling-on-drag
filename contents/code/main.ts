@@ -362,18 +362,10 @@ class Tiler{
         //     client.frameGeometry = manager.rootTile.absoluteGeometry
         // }
 
-        // FIXME Sometime maximize is not working, so we try it again once the geometry is changed
-        this.waitFor(client.frameGeometryChanged, client).then((client: AbstractClient) => {
-            this.doLogIf(this.config.logMaximize, LogLevel.DEBUG,`frameGeometryChanged maximize again ${this.clientToString(client)}`);
-            client.setMaximize(true,true);
-        })
-
         client.tile = null;
-
         const MaximizeArea = 2; // TODO Read global enum instead
-
         client.frameGeometry = workspace.clientArea(MaximizeArea, client.screen, client.desktop);
-        client.setMaximize(true,true);
+
     }
 
     private retileOther(client: AbstractClient) {
@@ -470,13 +462,15 @@ class Tiler{
             this.doTile(client, "unmaximize without tile");
         }
 
-        // FIXME Sometime unmaximize is not working, so we try it again once the geometry is changed
-        this.waitFor(client.frameGeometryChanged, client).then((client: AbstractClient) => {
-            this.doLogIf(this.config.logMaximize, LogLevel.DEBUG,`frameGeometryChanged unmaximize again ${this.clientToString(client)}`);
+        // Change and restore layoutDirection so all tiled windows are repositioned again
+        if(client.tile !== null && client.tile.layoutDirection !== 0){
+            const oldLayoutDirection = client.tile.layoutDirection
+            client.tile.layoutDirection = client.tile.layoutDirection === 1 ? 2 : 1;
+            client.tile.layoutDirection = oldLayoutDirection;
+        }else{
+            // setMaximize is buggy,avoid using it while tiling...
             client.setMaximize(false,false)
-        })
-
-        client.setMaximize(false,false)
+        }
     }
 
     private debugTree(desktop: number) {

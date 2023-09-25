@@ -369,6 +369,10 @@ class Tiler{
         })
 
         client.tile = null;
+
+        const MaximizeArea = 2; // TODO Read global enum instead
+
+        client.frameGeometry = workspace.clientArea(MaximizeArea, client.screen, client.desktop);
         client.setMaximize(true,true);
     }
 
@@ -408,7 +412,7 @@ class Tiler{
             this.getAllTiles(screen).forEach((tile: Tile) => {
 
                 const otherClientsOnTile = this.getClientOnTile(tile);
-                const untilledClientsOnScreen = this.getUntiledClientOnScreen(screen);
+                const untilledClientsOnScreen = this.getUntiledClientOnScreen(screen, client.desktop);
                 //this.debug(`Screen ${screen}, Tile ${tile.toString()} : has ${otherClientsOnTile.length} clients and ${freeTileOnScreen.length} free tiles. Clients: ${otherClientsOnTile.map((client: AbstractClient) => this.clientToString(client)).join(", ")})}`);
                 //this.debug(`Screen ${screen} has ${untilledClientsOnScreen.length} untiled clients. ${untilledClientsOnScreen.map((client: AbstractClient) => this.clientToString(client)).join(", ")})}`)
                 if (otherClientsOnTile.length > 1 && freeTileOnScreen.length > 0) {
@@ -429,10 +433,10 @@ class Tiler{
 
         // Minimize/maximize windows
         this.getAllScreensNumbers(client.screen).forEach((screen: number) => {
-            this.handleMaximizeMinimize(screen, `finished retileOther: Screen: ${screen}`);
+            this.handleMaximizeMinimize(screen, client.desktop, `finished retileOther: Screen: ${screen}`);
         });
 
-        this.debugTree()
+        this.debugTree(client.desktop)
     }
 
 
@@ -442,16 +446,16 @@ class Tiler{
         return client.activities.length === 0 || otherClient.activities.length === 0 || client.activities.join(",") === otherClient.activities.join(",");
     }
 
-    private tileDesktop(i: number, reason: string) {
-        this.getUntiledClientOnScreen(i).forEach((client: AbstractClient) => {
-            this.debug(`re-tile ${this.clientToString(client)} for desktop ${i} reorganization (${reason})`);
+    private tileDesktop(i: number, desktop: number, reason: string) {
+        this.getUntiledClientOnScreen(i, desktop).forEach((client: AbstractClient) => {
+            this.debug(`re-tile ${this.clientToString(client)} for screen ${i} and desktop ${desktop} - reorganization (${reason})`);
             this.doTile(client, reason);
         });
     }
 
-    getUntiledClientOnScreen(screen: Number) {
+    getUntiledClientOnScreen(screen: Number, desktop: number) {
         return workspace.clientList().filter(this.isSupportedClient).filter((client: AbstractClient) => {
-            return client.screen === screen && client.tile === null && !client.minimized;
+            return client.screen === screen && client.tile === null && !client.minimized && client.desktop === desktop;
         })
     }
 
@@ -475,19 +479,19 @@ class Tiler{
         client.setMaximize(false,false)
     }
 
-    private debugTree() {
+    private debugTree(desktop: number) {
         if(!this.config.logDebugTree){
             return;
         }
-        let output = "> debugTree\n";
+        let output = `> debugTree ${desktop}`;
         const tab= " "
         const tab2 = tab + tab;
         const tab3 = tab2 + tab;
         const tab4 = tab3 + tab;
         this.getAllScreensNumbers(0).forEach((screen: number) => {
-            output += `screen ${screen} - ${workspace.clientList().filter(this.isSupportedClient).filter((client: AbstractClient) => client.screen === screen).length} clients on screen, untiled: ${this.getUntiledClientOnScreen(screen).length} \n`;
-            if(this.getUntiledClientOnScreen(screen).length > 0) {
-                output += `${tab2} - untiled:\n${this.getUntiledClientOnScreen(screen).map((client: AbstractClient) => `${tab3} - ${this.clientToString(client)}`).join(", ")}\n`;
+            output += `screen ${screen} - ${workspace.clientList().filter(this.isSupportedClient).filter((client: AbstractClient) => client.screen === screen).length} clients on screen, untiled: ${this.getUntiledClientOnScreen(screen,desktop).length} \n`;
+            if(this.getUntiledClientOnScreen(screen,desktop).length > 0) {
+                output += `${tab2} - untiled:\n${this.getUntiledClientOnScreen(screen,desktop).map((client: AbstractClient) => `${tab3} - ${this.clientToString(client)}`).join(", ")}\n`;
             }
             this.getAllTiles(screen).forEach((tile: Tile) => {
                 output += (`${tab2} -  ${tile.toString()} clients: ${this.getClientOnTile(tile).length} (un-filtered ${tile.windows.length})\n`)
@@ -503,15 +507,15 @@ class Tiler{
         this.doLog(LogLevel.ERROR, `> Event ${message}`);
     }
 
-    private handleMaximizeMinimize(screen: number, reason: string) {
+    private handleMaximizeMinimize(screen: number, desktop: number, reason: string) {
 
         // Make sure all client are tiled
-        this.tileDesktop(screen, "handleMaximizeMinimize");
+        this.tileDesktop(screen,desktop, "handleMaximizeMinimize");
 
         const clientsOnThisScreen = workspace.clientList().filter(this.isSupportedClient).filter((otherClient: AbstractClient) => otherClient.screen === screen ).filter((otherClient: AbstractClient) => !otherClient.minimized);
 
         // If there is untilled clients, take them into account
-        this.getUntiledClientOnScreen(screen).forEach((client: AbstractClient) => {
+        this.getUntiledClientOnScreen(screen,desktop).forEach((client: AbstractClient) => {
             clientsOnThisScreen.push(client);
         });
 

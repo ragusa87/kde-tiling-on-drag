@@ -107,6 +107,14 @@ class Tiler{
         });
     };
 
+
+    private isSupportedActivity(client: AbstractClient)     {
+        if(client.activities.length === 0){
+            return true; // On all activities
+        }
+        return client.activities.includes(workspace.currentActivity);
+    }
+
     logWindowProperties(client: AbstractClient){
         if(!this.config.logWindowProperties){
             return;
@@ -319,7 +327,7 @@ class Tiler{
     }
 
     private getClientOnTile(tile: Tile) {
-        return tile.windows.filter(this.isSupportedClient).filter((otherClient: AbstractClient) => !otherClient.minimized)
+        return tile.windows.filter(this.isSupportedClient).filter(this.isSupportedActivity).filter((otherClient: AbstractClient) => !otherClient.minimized)
     }
 
     private maximize(client: AbstractClient) {
@@ -334,7 +342,7 @@ class Tiler{
         this.debug(`re-tile other windows due to change on ${this.clientToString(client)}. Screen: ${client.screen}`);
 
         // Tile all clients (this will un-maximize maximized window)
-        workspace.clientList().filter(this.isSupportedClient).filter((otherClient) => !otherClient.minimized).filter((otherClient: AbstractClient) => otherClient.tile === null).forEach((otherClient: AbstractClient) => {
+        workspace.clientList().filter(this.isSupportedClient).filter(this.isSupportedActivity).filter((otherClient) => !otherClient.minimized).filter((otherClient: AbstractClient) => otherClient.tile === null).forEach((otherClient: AbstractClient) => {
             this.doTile(otherClient, "retileOther: Untilled windows"); // We skip the client that changed
         })
 
@@ -401,7 +409,7 @@ class Tiler{
     }
 
     getUntiledClientOnScreen(screen: Number, desktop: number) {
-        return workspace.clientList().filter(this.isSupportedClient).filter((client: AbstractClient) => {
+        return workspace.clientList().filter(this.isSupportedActivity).filter(this.isSupportedClient).filter((client: AbstractClient) => {
             return client.screen === screen && client.tile === null && !client.minimized && client.desktop === desktop;
         })
     }
@@ -434,13 +442,13 @@ class Tiler{
         if(!this.config.logDebugTree){
             return;
         }
-        let output = `> debugTree ${desktop}`;
+        let output = `> debugTree (desktop: ${desktop}, activity: ${workspace.currentActivity})\n`;
         const tab= " "
         const tab2 = tab + tab;
         const tab3 = tab2 + tab;
         const tab4 = tab3 + tab;
         this.getAllScreensNumbers(0).forEach((screen: number) => {
-            output += `screen ${screen} - ${workspace.clientList().filter(this.isSupportedClient).filter((client: AbstractClient) => client.screen === screen).length} clients on screen, untiled: ${this.getUntiledClientOnScreen(screen,desktop).length} \n`;
+            output += `screen ${screen} - ${workspace.clientList().filter(this.isSupportedClient).filter(this.isSupportedActivity).filter((client: AbstractClient) => client.screen === screen).length} clients on screen, untiled: ${this.getUntiledClientOnScreen(screen,desktop).length} \n`;
             if(this.getUntiledClientOnScreen(screen,desktop).length > 0) {
                 output += `${tab2} - untiled:\n${this.getUntiledClientOnScreen(screen,desktop).map((client: AbstractClient) => `${tab3} - ${this.clientToString(client)}`).join(", ")}\n`;
             }
@@ -463,7 +471,7 @@ class Tiler{
         // Make sure all client are tiled
         this.tileDesktop(screen,desktop, "handleMaximizeMinimize");
 
-        const clientsOnThisScreen = workspace.clientList().filter(this.isSupportedClient).filter((otherClient: AbstractClient) => otherClient.screen === screen ).filter((otherClient: AbstractClient) => !otherClient.minimized);
+        const clientsOnThisScreen = workspace.clientList().filter(this.isSupportedClient).filter(this.isSupportedActivity).filter((otherClient: AbstractClient) => otherClient.screen === screen ).filter((otherClient: AbstractClient) => !otherClient.minimized);
 
         // If there is untilled clients, take them into account
         this.getUntiledClientOnScreen(screen,desktop).forEach((client: AbstractClient) => {

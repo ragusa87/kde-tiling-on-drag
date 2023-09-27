@@ -23,7 +23,6 @@ class Config {
 
 class Tiler{
     config: Config;
-    isTiling: boolean = false;
     clientFinishUserMovedResizedListener: (client: AbstractClient) => void;
     desktopChangedListener: () => void;
 
@@ -194,18 +193,13 @@ class Tiler{
     }
 
     tileClient(client: AbstractClient, reason: string = ""){
-        if(this.isTiling){
-            this.doLog(LogLevel.WARNING, `tileClient is already running, skip ${this.clientToString(client)} (${reason})`);
-            return;
-        }
-        this.isTiling= true;
+
         this.debug(`> tileClient ${this.clientToString(client)} (${reason})`);
 
         this.doTile(client, "tileClient");
 
         // Re-tile other windows on the same screen
         this.retileOther(client);
-        this.isTiling= false;
     }
 
     doTile(client: AbstractClient, reason: string = ""){

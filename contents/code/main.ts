@@ -21,29 +21,6 @@ class Config {
     doMaximizeSingleWindow: boolean = true;
 }
 
-// KWin global objects exposes "QTimer" that can be used to implement setTimeout
-
-let timers: QTimer[] = [];
-function setTimeout (callback: any, duration: number): number{
-    // @ts-ignore
-    let timer = new QTimer();
-    timers.push(timer);
-    timer.singleShot = true;
-    timer.timeout.connect(callback);
-    timer.start(duration);
-    return timers.length -1
-}
-
-function cancelTimeout(timerId: number): boolean{
-    if(timers[timerId] === undefined){
-        return false;
-    }
-    timers[timerId].stop();
-    return true;
-}
-
-
-
 class Tiler{
     config: Config;
     isTiling: boolean = false;

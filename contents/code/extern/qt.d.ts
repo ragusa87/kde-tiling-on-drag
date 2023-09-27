@@ -57,7 +57,10 @@ interface QQmlTimer {
     restart(): void;
     start(): void;
     stop(): void;
+    setSingleShot(singeShot: boolean): void;
 }
+
+
 
 declare namespace Qt {
     function createQmlObject(qml: string, parent: object, filepath?: string): any;

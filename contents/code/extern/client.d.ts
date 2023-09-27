@@ -30,8 +30,9 @@ declare interface Api {
 declare interface Toplevel {
     readonly popupWindow: boolean;
     readonly frameGeometry: QRect;
-    readonly desktop: number;
+    desktop: number;
     frameGeometryChanged: Signal<(client: AbstractClient, oldGeometry: QRect) => void>;
+    clientGeometryChanged: Signal<(client: AbstractClient, oldGeometry: QRect) => void>;
     windowClosed: Signal<(client: AbstractClient, deleted: object) => void>;
     screenChanged: Signal<() => void>;
 }
@@ -40,21 +41,21 @@ declare interface Toplevel {
 declare interface AbstractClient extends Toplevel {
     // objectName
     // bufferGeometry: QRectF
-    // pos: QPointF
-    // size: QSizeF
-    // x: number
-    // y: number
-    // width: number
-    // height: number
+    readonly pos: QPoint
+    readonly size: QSize
+    readonly x: number
+    readonly y: number
+    readonly width: number
+    readonly height: number
     // opacity: number
     screen: number;
-    ouput: number;
+    // output: number; Unable to handle unregistered datatype 'KWin::Output*'
     // rect: QRectF
     readonly resourceName: string;
     resourceClass: QByteArray;
-    // windowRole:
+    windowRole: string;
     // minimizedChanged: Signal
-readonly desktopWindow: boolean;
+    readonly desktopWindow: boolean;
     readonly dock: boolean;
     readonly toolbar: boolean;
     readonly menu: boolean;
@@ -112,7 +113,7 @@ readonly desktopWindow: boolean;
     readonly geometry: QRect;
     frameGeometry: QRect; //  is read/write for abstractclient
     readonly move: boolean;
-    readonly resize: boolean;
+    //readonly resize: boolean;
     readonly decorationHasAlpha: boolean;
     noBorder: boolean;
     readonly providesContextHelp: boolean;
@@ -139,7 +140,7 @@ readonly desktopWindow: boolean;
     // output: number;
 
     // signals
-    desktopPresenceChanged: Signal<(client: AbstractClient, desktop: number) => void>;
+    //desktopPresenceChanged: Signal<(client: AbstractClient, desktop: number) => void>; => Removed by https://invent.kde.org/plasma/kwin/-/merge_requests/3677
     desktopChanged: Signal<() => void>;
     fullScreenChanged: Signal<() => void>;
     activitiesChanged: Signal<(client: AbstractClient) => void>;
@@ -147,6 +148,8 @@ readonly desktopWindow: boolean;
     clientFinishUserMovedResized: Signal<(client: AbstractClient) => void>;
     quickTileModeChanged: Signal<() => void>;
     minimizedChanged: Signal<() => void>;
+    outputChanged: Signal<() => void>;
+    geometryChanged: Signal<() => void>;
 // Other signals:
 // objectNameChanged
 // stackingOrderChanged: Signal
@@ -225,6 +228,7 @@ declare interface Tile {
     windows: AbstractClient[];
     absoluteGeometry: QRect;
     relativeGeometry: QRect;
+    absoluteGeometryInScreen: QRect;
     layoutDirection: LayoutDirection;
     oldRelativeGeometry: QRect | undefined;
     // null for root tile
@@ -232,8 +236,22 @@ declare interface Tile {
     padding: number;
     split(direction: LayoutDirection): void;
     remove(): void;
-    // whether the engine generated the tile or not
-    generated: boolean | undefined;
+    moveByPixels(point: QPoint): void; // not supported on horizontal and vertical layouts
+    positionInLayout: number;
+    canBeRemoved: boolean;
+    isLayout: boolean;
+    isLayoutChanged(): boolean;
+    layoutModified: Signal<() => void>;
+    layoutDirectionChanged: Signal<() => LayoutDirection>;
+    // windowRemoved: Signal<any>;
+    // windowAdded: Signal<any>;
+    // childTilesChanged: Signal<any>;
+    // rowChanged: Signal<any>;
+    // paddingChanged: Signal<any>;
+    // windowGeometryChanged: Signal<() => void>;
+    // objectNameChanged: Signal<any>;
+    // absoluteGeometryChanged: Signal<() => void>;
+    // relativeGeometryChanged: Signal<() => void>;
 }
 declare enum LayoutDirection {
     Floating = 0,
@@ -266,7 +284,7 @@ declare enum QuickTileFlag {
     Custom = 1 << 4,
     Horizontal = Left | Right,
     Vertical = Top | Bottom,
-    Maximize = Left | Right | Top | Bottom,
+    Maximize = 15,
 }
 
 declare interface TileManager {
@@ -291,6 +309,7 @@ declare interface WorkspaceWrapper {
     clientList(): AbstractClient[];
     clientArea(option: ClientAreaOption, screen: number, desktop: number): QRect;
     clientArea(option: ClientAreaOption, client: AbstractClient): QRect;
+    slotWindowMaximize: () => void
     // doesnt actually exist in api but convenient place to keep state
     tmpLastActiveClient: AbstractClient | null | undefined;
     previousActiveClient: AbstractClient | null | undefined;
@@ -306,7 +325,7 @@ declare interface WorkspaceWrapper {
     // idk what user does
     clientFullScreenSet: Signal<(client: AbstractClient, fullscreen: boolean, user: any) => void>;
     // signals for workspace
-    currentDesktopChanged: Signal<(desktop: number, client: AbstractClient) => void>;
+    currentDesktopChanged: Signal<(oldDesktop: number, client: AbstractClient) => void>;
     currentActivityChanged: Signal<(activity: string) => void>;
 }
 declare interface Options {

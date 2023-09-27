@@ -12,11 +12,13 @@ enum LogLevel
 }
 
 class Config {
-    logLevel: LogLevel = LogLevel.DEBUG;
-    logMaximize: boolean = true;
+    logLevel: LogLevel = LogLevel.NOTICE;
+    logMaximize: boolean = false;
     logWindowProperties: boolean = false;
-    logDebugTree: boolean = true;
+    logDebugTree: boolean = false;
     logDebugScreens: boolean = false;
+    logEvents: boolean = false;
+    doMaximizeSingleWindow: boolean = true;
 }
 
 // KWin global objects exposes "QTimer" that can be used to implement setTimeout
@@ -284,7 +286,14 @@ class Tiler{
             })
 
         });
-        //this.debug(`getAllTiles ${screens.join(', ')} => ${tiles.length} tiles`);
+
+        // Take the leaves at first
+        tiles.sort((a: Tile, b: Tile) => {
+            if((a.parent !== null || b.parent !== null) && a.parent !== b.parent){
+                return -1;
+            }
+            return 0;
+        });
 
         return tiles;
     }
@@ -334,6 +343,7 @@ class Tiler{
     }
 
     private maximize(client: AbstractClient) {
+
         this.doLogIf(this.config.logMaximize,LogLevel.INFO, `> maximize ${this.clientToString(client)} ${client.tile?.toString()}`);
 
         client.tile = null;
@@ -356,14 +366,16 @@ class Tiler{
 
         this.getAllScreensNumbers(client.screen).forEach((screen: number) => {
             // Process the list of free tiles
-            freeTileOnScreens.set(screen, []);
+            const currentFreeTiles : Tile[] = []
+            freeTileOnScreens.set(screen, currentFreeTiles);
             this.getAllTiles(screen).forEach((tile: Tile) => {
                 if (tile.windows.filter(this.isSupportedClient).filter((client: AbstractClient) => !client.minimized).length === 0) {
-                    // @ts-ignore
-                    freeTileOnScreens.get(screen).push(tile);
+                    currentFreeTiles.push(tile);
                     freeTilesOverall.push(tile);
                 }
             });
+
+            freeTileOnScreens.set(screen,currentFreeTiles)
         });
 
 
@@ -378,8 +390,6 @@ class Tiler{
 
                 const otherClientsOnTile = this.getClientOnTile(tile);
                 const untilledClientsOnScreen = this.getUntiledClientOnScreen(screen, client.desktop);
-                //this.debug(`Screen ${screen}, Tile ${tile.toString()} : has ${otherClientsOnTile.length} clients and ${freeTileOnScreen.length} free tiles. Clients: ${otherClientsOnTile.map((client: AbstractClient) => this.clientToString(client)).join(", ")})}`);
-                //this.debug(`Screen ${screen} has ${untilledClientsOnScreen.length} untiled clients. ${untilledClientsOnScreen.map((client: AbstractClient) => this.clientToString(client)).join(", ")})}`)
                 if (otherClientsOnTile.length > 1 && freeTileOnScreen.length > 0) {
                     this.moveClientToFreeTile(screen, client, otherClientsOnTile, freeTileOnScreen,  "otherClientsOnTile");
                     return;
@@ -428,11 +438,15 @@ class Tiler{
             this.doTile(client, "unmaximize without tile");
         }
 
-        // Change and restore layoutDirection so all tiled windows are repositioned again
-        if(client.tile !== null && client.tile.layoutDirection !== 0){
-            const oldLayoutDirection = client.tile.layoutDirection
-            client.tile.layoutDirection = client.tile.layoutDirection === 1 ? 2 : 1;
-            client.tile.layoutDirection = oldLayoutDirection;
+        // Change a tile setting, so all windows in it got repositioned
+        if(client.tile !== null){
+            this.doLogIf(this.config.logMaximize, LogLevel.DEBUG, `Change padding to resize ${this.clientToString(client)}`)
+            client.tile.padding += 1;
+            client.tile.padding -= 1;
+
+            // const oldLayoutDirection = client.tile.layoutDirection
+            // client.tile.layoutDirection = client.tile.layoutDirection !== 2 ? 2 : 1;
+            // client.tile.layoutDirection = oldLayoutDirection;
         }else{
             this.doLogIf(this.config.logMaximize, LogLevel.WARNING, `Force tiling an untiled window ${this.clientToString(client)}`)
 
@@ -466,7 +480,7 @@ class Tiler{
     }
 
     private event(message: string) {
-        this.doLog(LogLevel.ERROR, `> Event ${message}`);
+        this.doLogIf(this.config.logEvents, LogLevel.ERROR, `> Event ${message}`);
     }
 
     private handleMaximizeMinimize(screen: number, desktop: number, reason: string) {
@@ -485,6 +499,10 @@ class Tiler{
         this.doLogIf(this.config.logMaximize, LogLevel.DEBUG, `> handleMaximizeMinimize ${clientsOnThisScreen.length} clients on screen ${screen} (${reason})`);
         switch (clientsOnThisScreen.length) {
             case 1:
+                if(!this.config.doMaximizeSingleWindow){
+                    this.unmaximize(clientsOnThisScreen[0])
+                    break;
+                }
                 this.maximize(clientsOnThisScreen[0]);
                 break;
             default:

@@ -331,7 +331,7 @@ class Tiler{
         })
 
         let freeTileOnScreens: Map<Number, Tile[]> = new Map();
-        const freeTilesOverall = []
+        let freeTilesOverall: Tile[] = []
 
 
 
@@ -362,12 +362,18 @@ class Tiler{
                 const otherClientsOnTile = this.getClientOnTile(tile);
                 const untiledClientsOnScreen = this.getUntiledClientOnScreen(screen, client.desktop);
                 if (otherClientsOnTile.length > 1 && freeTileOnScreen.length > 0) {
-                    this.moveClientToFreeTile(screen, client, otherClientsOnTile, freeTileOnScreen,  "otherClientsOnTile");
-                    return;
+                    if(this.moveClientToFreeTile(client, otherClientsOnTile, freeTileOnScreen,  "otherClientsOnTile")){
+                        const usedTile = freeTileOnScreen.shift();
+                        freeTilesOverall = freeTilesOverall.filter((tile: Tile) => tile !== usedTile);
+                        return;
+                    }
                 }
                 if(untiledClientsOnScreen.length > 0 && freeTileOnScreen.length > 0){
-                    this.moveClientToFreeTile(screen, client, untiledClientsOnScreen, freeTileOnScreen, "untilled client")
-                    return
+                    if(this.moveClientToFreeTile( client, untiledClientsOnScreen, freeTileOnScreen, "untilled client")){
+                        const usedTile = freeTileOnScreen.shift();
+                        freeTilesOverall = freeTilesOverall.filter((tile: Tile) => tile !== usedTile);
+                        return
+                    }
                 }
 
                 if(otherClientsOnTile.length > 1 && freeTilesOverall.length > 0) {
@@ -484,14 +490,17 @@ class Tiler{
         }
     }
 
-    private moveClientToFreeTile(screen: Number, client: AbstractClient, otherClientsOnTile: AbstractClient[], freeTileOnScreen: Tile[], reason: string) {
+    /**
+     * Move client to a free tile and return the used tile if any
+     */
+    private moveClientToFreeTile(client: AbstractClient, otherClientsOnTile: AbstractClient[], freeTileOnScreen: Tile[], reason: string): Tile|null {
         this.debug(`Move one client from tile to a free one (${reason}). Clients on tile:\n  ${otherClientsOnTile.map((client: AbstractClient) => `  - ${this.clientToString(client)}`).join("\n")}\nFree tiles : ${freeTileOnScreen.map((tile: Tile) => `- ${tile.toString()}`).join(", ")})}`);
         let clientToMove = otherClientsOnTile.pop();
         if (clientToMove === client) {
             clientToMove = otherClientsOnTile.pop();
             if(clientToMove === null){
                 this.debug(`Do not move ${client} as it beeing tiled. No other client to move to a free tile.`)
-                return;
+                return null;
             }
             this.debug(`Skip ${this.clientToString(client)} as it is the one that changed, use ${this.clientToString(clientToMove)} instead`)
         }
@@ -501,7 +510,9 @@ class Tiler{
             this.debug(`Move ${this.clientToString(clientToMove)} from ${clientToMove.tile?.toString()} to ${freeTile.toString()}`);
             // @ts-ignore freeTileOnScreen is not empty
             clientToMove.tile = freeTile;
+            return freeTile
         }
+        return null;
     }
 
     private doLogIf(enabled: boolean, level: LogLevel, message: string) {

@@ -360,13 +360,13 @@ class Tiler{
             this.getAllTiles(screen).forEach((tile: Tile) => {
 
                 const otherClientsOnTile = this.getClientOnTile(tile);
-                const untilledClientsOnScreen = this.getUntiledClientOnScreen(screen, client.desktop);
+                const untiledClientsOnScreen = this.getUntiledClientOnScreen(screen, client.desktop);
                 if (otherClientsOnTile.length > 1 && freeTileOnScreen.length > 0) {
                     this.moveClientToFreeTile(screen, client, otherClientsOnTile, freeTileOnScreen,  "otherClientsOnTile");
                     return;
                 }
-                if(untilledClientsOnScreen.length > 0 && freeTileOnScreen.length > 0){
-                    this.moveClientToFreeTile(screen, client, untilledClientsOnScreen, freeTileOnScreen, "untilled client")
+                if(untiledClientsOnScreen.length > 0 && freeTileOnScreen.length > 0){
+                    this.moveClientToFreeTile(screen, client, untiledClientsOnScreen, freeTileOnScreen, "untilled client")
                     return
                 }
 

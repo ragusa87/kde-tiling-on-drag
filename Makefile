@@ -37,3 +37,4 @@ build: clear compile # Build package
 	@find "build/" -type d -empty -print -delete
 	cp metadata.json build/
 	@7z a -tzip $(KWINPKG_FILE) ./build/*
+	rm -f $(MAIN_FILE)

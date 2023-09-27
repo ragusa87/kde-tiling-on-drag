@@ -16,6 +16,7 @@ class Config {
     logMaximize: boolean = true;
     logWindowProperties: boolean = false;
     logDebugTree: boolean = true;
+    logDebugScreens: boolean = false;
 }
 
 // KWin global objects exposes "QTimer" that can be used to implement setTimeout
@@ -305,6 +306,8 @@ class Tiler{
                 screens.push(i);
             }
         }
+        this.doLogIf(this.config.logDebugScreens, LogLevel.DEBUG, `screens: ${screens.join(', ')} (favorite: ${favoriteNumber}, total: ${workspace.numScreens})`)
+
         return screens;
     }
 
@@ -473,13 +476,13 @@ class Tiler{
 
         const clientsOnThisScreen = workspace.clientList().filter(this.isSupportedClient).filter(this.isSupportedActivity).filter((otherClient: AbstractClient) => otherClient.screen === screen ).filter((otherClient: AbstractClient) => !otherClient.minimized);
 
-        // If there is untilled clients, take them into account
+        // If there is un-tilled clients, take them into account
         this.getUntiledClientOnScreen(screen,desktop).forEach((client: AbstractClient) => {
             clientsOnThisScreen.push(client);
         });
 
 
-        this.doLog(LogLevel.DEBUG, `> handleMaximizeMinimize ${clientsOnThisScreen.length} clients on screen ${screen} (${reason})`);
+        this.doLogIf(this.config.logMaximize, LogLevel.DEBUG, `> handleMaximizeMinimize ${clientsOnThisScreen.length} clients on screen ${screen} (${reason})`);
         switch (clientsOnThisScreen.length) {
             case 1:
                 this.maximize(clientsOnThisScreen[0]);

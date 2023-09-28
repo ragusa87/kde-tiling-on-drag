@@ -20,8 +20,9 @@ Inspired by :
 
 How to install :
 
-1. run `make install` (you will need `7z` && `plasmapkg2` && `npm`).
+1. Download a release from <https://github.com/ragusa87/kde-tilling-on-drag> and unzip it.
 2. Open Plasma setting and search for "KWin" (Windows Management -> KWin Script).
+3. Click on "Install from file" and select the `kde-tilling-on-drag.kwinscript` file.
 3. Enable this extension (kde-tilling-on-drag).
 4. Click on Apply.
 
@@ -30,7 +31,13 @@ How to use it :
 1. Make sure your enabled the tilling editor in the "Desktop effect" settings.
 2. Press "Meta+T" to open the Tilling Editor.
 3. Setup a layout.
-4. Drag or un-minimize any window, it will be tiled to the area you defined earlier.
+4. Drag or open any window, it will be tiled automatically.
+
+How to compile and install from source :
+
+1. Install requirements (`makefile`, `7z`, `npm`, `plasmapkg2` or `plasma-framework`)
+2. Edit the source file
+3. Run `make reload` to build the package and reload it in Plasma
 
 Limitations :
 

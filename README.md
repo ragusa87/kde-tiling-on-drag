@@ -20,11 +20,11 @@ Inspired by :
 
 How to install :
 
-1. Download a release from <https://github.com/ragusa87/kde-tilling-on-drag> and unzip it.
+1. Download a release from <https://github.com/ragusa87/kde-tilling-on-drag/releases> (file `kde-tilling-on-drag.kwinscript`).
 2. Open Plasma setting and search for "KWin" (Windows Management -> KWin Script).
 3. Click on "Install from file" and select the `kde-tilling-on-drag.kwinscript` file.
-3. Enable this extension (kde-tilling-on-drag).
-4. Click on Apply.
+4. Enable this extension (kde-tilling-on-drag).
+5. Click on Apply.
 
 How to use it :
 

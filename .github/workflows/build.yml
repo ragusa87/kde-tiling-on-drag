@@ -85,14 +85,19 @@ jobs:
       - name: Display structure of files
         run: ls -la
 
+      - name: Create release artifact
+        env:
+          RELEASE_NAME: ${{steps.get_release_name.outputs.RELEASE_NAME}}
+        run: |
+          mkdir -p releases/
+          7z a -tzip releases/${RELEASE_NAME}.zip kde-tilling-on-drag.kwinscript changelog.md README.md
+
       - name: Create Artifact
         uses: actions/upload-artifact@v2
         with:
           name: release
           path: |
-            ./kde-tilling-on-drag.kwinscript
-            ./changelog.md
-            ./README.md
+            ./releases/${{steps.get_release_name.outputs.RELEASE_NAME}}.zip
 
       - name: Create a Release (on tag push)
         uses: softprops/action-gh-release@v1
@@ -103,6 +108,4 @@ jobs:
           draft: ${{ contains(github.ref, 'latest') }}
           prerelease: ${{ contains(github.ref, 'beta') }}
           files: |
-            ./kde-tilling-on-drag.kwinscript
-            ./changelog.md
-            ./README.md
+            ./releases/${{steps.get_release_name.outputs.RELEASE_NAME}}.zip

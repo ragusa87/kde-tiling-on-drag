@@ -35,7 +35,6 @@ jobs:
 
       - name: Generate Changelog
         run: |
-          git fetch --tags || true
           latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null)  
           prev_tag=$(git describe --tags $(git rev-list --tags --skip=1 --max-count=1) 2>/dev/null)
           first_commit=$(git rev-list --max-parents=0 HEAD)
@@ -44,7 +43,7 @@ jobs:
           dest=changelog.md
 
           echo "## Changelog ${RELEASE_NAME}" > ${dest}
-          git log --pretty=format:'- %s - %an, %ad' $prev_tag..$latest_tag >> ${dest}
+          git log --pretty=format:'- %s - %an' $prev_tag..$latest_tag >> ${dest}
           
           cat ${dest}
 

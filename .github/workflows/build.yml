@@ -1,0 +1,33 @@
+name: Compile and build the artifact
+on:
+  push:
+    branches:
+      - main # Change this to your desired branch
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+
+      - name: Install dependencies such as 7zip, plasma-framework and Makefile
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y p7zip-full make plasma-framework
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Compile TypeScript and build the artifact
+        run: make build
+
+      - name: Create Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: kde-tilling-on-drag-dev.kwinscript
+          path: ./kde-tilling-on-drag.kwinscript

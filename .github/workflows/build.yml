@@ -98,7 +98,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           body_path: ./changelog.md
-          name: ${{steps.get_release_name.outputs.RELEASE_NAME}}
+          name: ${{ steps.get_release_name.outputs.RELEASE_NAME }}
           draft: ${{ contains(github.ref, 'latest') }}
           prerelease: ${{ contains(github.ref, 'beta') }}
           files: |

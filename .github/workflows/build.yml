@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - main # Change this to your desired branch
+    tags:
+      - '*'
   pull_request:
 
 jobs:

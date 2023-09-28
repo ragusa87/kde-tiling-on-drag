@@ -16,9 +16,9 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies such as 7zip, plasma-framework etc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y p7zip-full make plasma-framework jq
+        uses: tecolicom/actions-use-apt-tools@v1
+        with:
+          tools: p7zip-full make plasma-framework jq
 
       - name: Checkout code
         uses: actions/checkout@v2

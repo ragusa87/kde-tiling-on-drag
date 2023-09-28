@@ -1,0 +1,106 @@
+name: Compile and build the artifact
+on:
+  push:
+    branches:
+      - main # Change this to your desired branch
+    tags:
+      - '*'
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+
+      - name: Install dependencies such as 7zip, plasma-framework etc
+        uses: tecolicom/actions-use-apt-tools@v1
+        with:
+          tools: p7zip-full make plasma-framework jq
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Compile TypeScript and build the artifact
+        run: make build
+
+      - name: Create Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: kde-tilling-on-drag.kwinscript
+          path: |
+            ./kde-tilling-on-drag.kwinscript
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Download the artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: kde-tilling-on-drag.kwinscript
+
+      - name: Generate release name
+        id: get_release_name
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          echo "tag_name: ${TAG_NAME}"
+          RELEASE_NAME=$(git show -s --format=release-%cs-)${TAG_NAME:-latest}
+          echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_OUTPUT
+          echo "release_name: ${RELEASE_NAME}"
+
+      - name: Generate Changelog
+        env:
+          RELEASE_NAME: ${{steps.get_release_name.outputs.RELEASE_NAME}}
+        run: |
+          set +e
+          prev_tag=$(git describe --tags $(git rev-list --tags --skip=1 --max-count=1))
+          first_commit=$(git rev-list --max-parents=0 HEAD)
+          prev_tag=${prev_tag:-$first_commit}
+          set -e
+          
+          echo "first_commit=${first_commit}"
+          echo "prev_tag=${prev_tag}"
+          
+          echo "diff between ${prev_tag} and HEAD"
+
+          dest=changelog.md
+
+          echo "## Changelog ${RELEASE_NAME}" > ${dest}
+          git log --no-merges --pretty=format:'- %s - %an' $prev_tag..HEAD >> ${dest}
+          
+          cat ${dest}
+
+      - name: Display structure of files
+        run: ls -la
+
+      - name: Create Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: release
+          path: |
+            ./kde-tilling-on-drag.kwinscript
+            ./changelog.md
+
+      - name: Create a Release (on tag push)
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          body_path: ./changelog.md
+          name: ${{ steps.get_release_name.outputs.RELEASE_NAME }}
+          draft: ${{ contains(github.ref, 'latest') }}
+          prerelease: ${{ contains(github.ref, 'beta') }}
+          files: |
+            ./kde-tilling-on-drag.kwinscript
+            ./changelog.md

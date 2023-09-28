@@ -2,3 +2,4 @@ kde-tilling-on-drag.kwinscript
 node_modules
 *.js
 build/
+changelog.md

@@ -25,7 +25,10 @@ jobs:
 
       - name: Compile TypeScript and build the artifact
         run: make build
-
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
       - name: Generate release name
         id: get_release_name
         run: |

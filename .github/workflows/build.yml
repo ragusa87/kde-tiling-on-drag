@@ -43,8 +43,10 @@ jobs:
 
       - name: Generate Changelog
         run: |
+          set +e
           latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1))  
           prev_tag=$(git describe --tags $(git rev-list --tags --skip=1 --max-count=1))
+          set -e
           first_commit=$(git rev-list --max-parents=0 HEAD)
           latest_tag=${latest_tag:-HEAD}
           prev_tag=${prev_tag:-$first_commit}

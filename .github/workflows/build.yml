@@ -25,6 +25,13 @@ jobs:
 
       - name: Compile TypeScript and build the artifact
         run: make build
+
+      - name: Create Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: kde-tilling-on-drag.kwinscript
+          path: |
+            ./kde-tilling-on-drag.kwinscript
   release:
     needs: build
     runs-on: ubuntu-latest
@@ -33,6 +40,14 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
+
+      - name: Download the artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: kde-tilling-on-drag.kwinscript
+
+      - name: Display structure of downloaded files
+        run: ls -R
 
       - name: Generate release name
         id: get_release_name
@@ -60,7 +75,7 @@ jobs:
       - name: Create Artifact
         uses: actions/upload-artifact@v2
         with:
-          name: kde-tilling-on-drag.kwinscript
+          name: release
           path: |
             ./kde-tilling-on-drag.kwinscript
             changelog.md
@@ -73,4 +88,4 @@ jobs:
           body_path: ./changelog.md
           release_name: ${RELEASE_NAME}
           files: |
-            ./kde-tilling-on-drag.kwinscript
+            ./release/kde-tilling-on-drag.kwinscript

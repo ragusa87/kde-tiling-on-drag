@@ -94,13 +94,13 @@ jobs:
             ./changelog.md
 
       - name: Create a Release (on tag push)
-        env:
-          RELEASE_NAME: ${{steps.get_release_name.outputs.RELEASE_NAME}}
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
           body_path: ./changelog.md
-          name: ${RELEASE_NAME}
+          name: ${{steps.get_release_name.outputs.RELEASE_NAME}}
+          draft: ${{ contains(github.ref, 'latest') }}
+          prerelease: ${{ contains(github.ref, 'beta') }}
           files: |
             ./kde-tilling-on-drag.kwinscript
             ./changelog.md

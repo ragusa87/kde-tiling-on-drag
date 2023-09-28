@@ -61,28 +61,20 @@ jobs:
           RELEASE_NAME: ${{steps.get_release_name.outputs.RELEASE_NAME}}
         run: |
           set +e
-          latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1))  
           prev_tag=$(git describe --tags $(git rev-list --tags --skip=1 --max-count=1))
           first_commit=$(git rev-list --max-parents=0 HEAD)
-          
+          prev_tag=${prev_tag:-$first_commit}
           set -e
           
           echo "first_commit=${first_commit}"
           echo "prev_tag=${prev_tag}"
-          echo "latest_tag=${latest_tag}"
           
-          latest_tag=${latest_tag:-HEAD}
-          prev_tag=${prev_tag:-$first_commit}
-          echo "diff between ${prev_tag} and ${latest_tag}"
-          
-          echo "first_commit=${first_commit}"
-          echo "prev_tag=${prev_tag}"
-          echo "latest_tag=${latest_tag}"
+          echo "diff between ${prev_tag} and HEAD"
 
           dest=changelog.md
 
           echo "## Changelog ${RELEASE_NAME}" > ${dest}
-          git log --pretty=format:'- %s - %an' $prev_tag..$latest_tag >> ${dest}
+          git log --no-merges --pretty=format:'- %s - %an' $prev_tag..HEAD >> ${dest}
           
           cat ${dest}
 

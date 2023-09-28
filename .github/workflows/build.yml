@@ -15,10 +15,10 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install dependencies such as 7zip, plasma-framework and Makefile
+      - name: Install dependencies such as 7zip, plasma-framework etc
         run: |
           sudo apt-get update
-          sudo apt-get install -y p7zip-full make plasma-framework
+          sudo apt-get install -y p7zip-full make plasma-framework jq
 
       - name: Checkout code
         uses: actions/checkout@v2
@@ -26,8 +26,40 @@ jobs:
       - name: Compile TypeScript and build the artifact
         run: make build
 
+      - name: Generate release name
+        id: get_release_name
+        run: |
+          TAG_NAME=${GITHUB_REF/refs\/tags\//}
+          RELEASE_NAME=$(git show -s --format=release-%cs-)${TAG_NAME:-latest}
+          echo "::set-output name=release_name::$RELEASE_NAME"
+
+      - name: Generate Changelog
+        run: |
+          git fetch --tags
+          latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null)  
+          prev_tag=$(git describe --tags $(git rev-list --tags --skip=1 --max-count=1) 2>/dev/null)
+          first_commit=$(git rev-list --max-parents=0 HEAD)
+          latest_tag=${latest_tag:-HEAD}
+          prev_tag=${prev_tag:-$first_commit}
+          dest=changelog.md
+
+          echo "## Changelog ${{ steps.get_release_name.outputs.release_name }}" > ${dest}
+          git log --pretty=format:'- %s - %an, %ad' $prev_tag..$latest_tag >> ${dest}
+
       - name: Create Artifact
         uses: actions/upload-artifact@v2
         with:
-          name: kde-tilling-on-drag-dev.kwinscript
-          path: ./kde-tilling-on-drag.kwinscript
+          name: kde-tilling-on-drag.kwinscript
+          path: |
+            ./kde-tilling-on-drag.kwinscript
+            changelog.md
+
+      - name: Release on tag push
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          tag_name: ${{ github.ref }}
+          body_path: ./changelog.md
+          release_name: ${{ steps.get_release_name.outputs.release_name }}
+          files: |
+            ./kde-tilling-on-drag.kwinscript

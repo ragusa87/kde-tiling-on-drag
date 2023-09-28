@@ -92,6 +92,7 @@ jobs:
           path: |
             ./kde-tilling-on-drag.kwinscript
             ./changelog.md
+            ./README.md
 
       - name: Create a Release (on tag push)
         uses: softprops/action-gh-release@v1
@@ -104,3 +105,4 @@ jobs:
           files: |
             ./kde-tilling-on-drag.kwinscript
             ./changelog.md
+            ./README.md

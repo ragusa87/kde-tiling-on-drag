@@ -1,4 +1,4 @@
-kde-tilling-on-drag.kwinscript
+kde-tiling-on-drag.kwinscript
 node_modules
 *.js
 build/

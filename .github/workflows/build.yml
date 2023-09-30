@@ -31,9 +31,9 @@ jobs:
       - name: Create Artifact
         uses: actions/upload-artifact@v2
         with:
-          name: kde-tilling-on-drag.kwinscript
+          name: kde-tiling-on-drag.kwinscript
           path: |
-            ./kde-tilling-on-drag.kwinscript
+            ./kde-tiling-on-drag.kwinscript
   release:
     needs: build
     runs-on: ubuntu-latest
@@ -48,7 +48,7 @@ jobs:
       - name: Download the artifact
         uses: actions/download-artifact@v2
         with:
-          name: kde-tilling-on-drag.kwinscript
+          name: kde-tiling-on-drag.kwinscript
 
       - name: Generate release name
         id: get_release_name
@@ -90,7 +90,7 @@ jobs:
         with:
           name: release
           path: |
-            ./kde-tilling-on-drag.kwinscript
+            ./kde-tiling-on-drag.kwinscript
             ./changelog.md
             ./README.md
 
@@ -103,6 +103,6 @@ jobs:
           draft: ${{ contains(github.ref, 'latest') }}
           prerelease: ${{ contains(github.ref, 'beta') }}
           files: |
-            ./kde-tilling-on-drag.kwinscript
+            ./kde-tiling-on-drag.kwinscript
             ./changelog.md
             ./README.md

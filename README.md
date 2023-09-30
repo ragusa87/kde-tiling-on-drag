@@ -1,5 +1,5 @@
-# kde-tilling-on-drag
-Use KDE 5.27 Tilling manager and "tile" all windows at the best positon without having to press the `shift` key.
+# kde-tiling-on-drag
+Use KDE 5.27 Tiling manager and "tile" all windows at the best positon without having to press the `shift` key.
 
 It will not split or add areas on the fly, the window is only resized to an existing area that you can define with `Meta+T` using KDE's tiling editor.
 
@@ -20,16 +20,16 @@ Inspired by :
 
 How to install :
 
-1. Download a release from <https://github.com/ragusa87/kde-tilling-on-drag/releases> (file `kde-tilling-on-drag.kwinscript`).
+1. Download a release from <https://github.com/ragusa87/kde-tiling-on-drag/releases> (file `kde-tiling-on-drag.kwinscript`).
 2. Open Plasma setting and search for "KWin" (Windows Management -> KWin Script).
-3. Click on "Install from file" and select the `kde-tilling-on-drag.kwinscript` file.
-4. Enable this extension (kde-tilling-on-drag).
+3. Click on "Install from file" and select the `kde-tiling-on-drag.kwinscript` file.
+4. Enable this extension (kde-tiling-on-drag).
 5. Click on Apply.
 
 How to use it :
 
-1. Make sure your enabled the tilling editor in the "Desktop effect" settings.
-2. Press "Meta+T" to open the Tilling Editor.
+1. Make sure your enabled the tiling editor in the "Desktop effect" settings.
+2. Press "Meta+T" to open the tiling Editor.
 3. Setup a layout.
 4. Drag or open any window, it will be tiled automatically.
 

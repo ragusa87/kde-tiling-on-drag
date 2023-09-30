@@ -1,4 +1,4 @@
-PROJECT_NAME = kde-tilling-on-drag
+PROJECT_NAME = kde-tiling-on-drag
 KWINPKG_FILE=$(PROJECT_NAME).kwinscript
 MAIN_FILE=contents/code/main.js
 MAIN_FILE_TYPESCRIPT=contents/code/main.ts

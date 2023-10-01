@@ -1,19 +1,23 @@
 # kde-tiling-on-drag
 Use KDE 5.27 Tiling manager and "tile" all windows at the best positon without having to press the `shift` key.
-
 It will not split or add areas on the fly, the window is only resized to an existing area that you can define with `Meta+T` using KDE's tiling editor.
 
 Single windows are maximized automatically.
 
 *This extension is unstable.*
 
-Resources : 
+Demo:
+
+ ![demo](https://github.com/ragusa87/kde-tiling-on-drag/assets/1695207/c68bf60f-9a95-4037-9560-2b9d79dc3e9f)
+
+Resources :
 
 * KWin documentation <https://develop.kde.org/docs/plasma/kwin/api/>
 * Plasma's MR that adds Tiling support <https://invent.kde.org/plasma/kwin/-/merge_requests/2560/diffs>
 * KDE's Scripting support <https://invent.kde.org/plasma/kwin/-/blame/master/src/scripting/scripting.cpp#L210>
 
 Inspired by :
+
 * <https://github.com/esjeon/krohnkite>
 * <https://github.com/Bismuth-Forge/bismuth>
 * <https://github.com/zeroxoneafour/polonium>

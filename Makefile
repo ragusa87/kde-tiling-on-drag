@@ -33,6 +33,8 @@ lint: clear # Lint
 build: clear compile # Build package
 	mkdir -p build/contents/code
 	cp -r contents/code build/contents/
+	cp -r contents/config build/contents/
+	cp -r contents/ui build/contents/
 	@find "build/" '(' -name "*.ts" ')' -delete
 	@find "build/" -type d -empty -print -delete
 	cp metadata.json build/

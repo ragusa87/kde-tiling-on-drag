@@ -12,10 +12,19 @@ enum LogLevel
 }
 
 class Config {
-    logLevel: LogLevel = LogLevel.NOTICE;
-    logMaximize: boolean = false;
+    constructor(debug: boolean = false) {
+        this.logLevel = debug ? LogLevel.DEBUG: LogLevel.NOTICE;
+        this.logMaximize = debug
+        this.logDebugTree = debug
+    }
+
+    setLogWindowProperties(value: boolean){
+        this.logWindowProperties = value;
+    }
+    logLevel: LogLevel;
+    logMaximize: boolean;
     logWindowProperties: boolean = false;
-    logDebugTree: boolean = false;
+    logDebugTree: boolean;
     logDebugScreens: boolean = false;
     logEvents: boolean = false;
     doMaximizeSingleWindow: boolean = true;
@@ -540,4 +549,9 @@ class Tiler{
     }
 }
 
-(new Tiler(new Config()));
+const isDebug = readConfig("isDebug", false);
+const config = new Config(isDebug);
+config.setLogWindowProperties(readConfig("logWindowProperties", false))
+
+console.log(`Tiling started with debug: ${isDebug}`)
+new Tiler(config);

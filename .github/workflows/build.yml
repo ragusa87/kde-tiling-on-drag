@@ -65,7 +65,7 @@ jobs:
           RELEASE_NAME: ${{steps.get_release_name.outputs.RELEASE_NAME}}
         run: |
           set +e
-          prev_tag=$(git describe --tags $(git rev-list --tags --skip=1 --max-count=1))
+          prev_tag=$(git describe --abbrev=0 --tags --exclude="$(git describe --abbrev=0 --tags)")
           first_commit=$(git rev-list --max-parents=0 HEAD)
           prev_tag=${prev_tag:-$first_commit}
           set -e

@@ -505,7 +505,7 @@ class Tiler{
         if (clientToMove === client) {
             clientToMove = otherClientsOnTile.pop();
             if(clientToMove === null){
-                this.debug(`Do not move ${client} as it beeing tiled. No other client to move to a free tile.`)
+                this.debug(`Do not move ${client} as it is being tiled. No other client to move to a free tile.`)
                 return null;
             }
             this.debug(`Skip ${this.clientToString(client)} as it is the one that changed, use ${this.clientToString(clientToMove)} instead`)

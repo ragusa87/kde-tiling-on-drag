@@ -18,10 +18,6 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-/* KWin global objects */
-declare var workspace: WorkspaceWrapper;
-declare var options: Options;
-
 
 declare interface Signal<T> {
     connect(callback: T): void;
@@ -61,6 +57,7 @@ interface Console {
 
 declare let QTimer:  QQmlTimer;
 
+/* KWin global objects */
 declare let console: Console;
-//declare let setTimeout: any;
-//declare let print: (...values: any[]) => void;
+declare var workspace: WorkspaceWrapper;
+declare var KWin: KWinEnums;

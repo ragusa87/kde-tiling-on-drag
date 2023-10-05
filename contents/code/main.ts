@@ -323,8 +323,7 @@ class Tiler{
         this.doLogIf(this.config.logMaximize,LogLevel.INFO, `> maximize ${this.clientToString(client)} ${client.tile?.toString()}`);
 
         client.tile = null;
-        const MaximizeArea = 2; // TODO Read global enum instead
-        client.frameGeometry = workspace.clientArea(MaximizeArea, client.screen, client.desktop);
+        client.frameGeometry = workspace.clientArea(KWin.MaximizeArea, client.screen, client.desktop);
     }
 
     private retileOther(client: AbstractClient) {

@@ -22,10 +22,24 @@
 //     https://techbase.kde.org/Development/Tutorials/KWin/Scripting/API_4.9
 
 
-declare interface Api {
-    readConfig(key: string, defaultValue?: any): any;
-    registerShortcut(id: string, desc: string, keybind: string, callback: Function): void;
-    callDBus(): void;
+declare interface KWinEnums{
+    PlacementArea: number;
+    MovementArea: number;
+    MaximizeArea: number;
+    MaximizeFullArea: number;
+    FullScreenArea: number;
+    WorkArea: number;
+    FullArea: number;
+    ScreenAre: number;
+    ElectricTop: number;
+    ElectricTopRight: number;
+    ElectricRight: number;
+    ElectricBottomRight: number;
+    ElectricBottom: number;
+    ElectricBottomLeft: number;
+    ElectricLeft: number;
+    ElectricTopLeft: number;
+    ElectricNone: number;
 }
 declare interface Toplevel {
     readonly popupWindow: boolean;
@@ -258,16 +272,7 @@ declare enum LayoutDirection {
     Horizontal,
     Vertical,
 }
-declare enum ClientAreaOption {
-    PlacementArea = 0,
-    MovementArea,
-    MaximizeArea,
-    MaximizeFullArea,
-    FullScreenArea,
-    WorkArea,
-    FullArea,
-    ScreenArea,
-}
+
 declare interface CustomTile extends Tile {
     parent: null;
     layoutModified: Signal<() => void>;
@@ -307,15 +312,10 @@ declare interface WorkspaceWrapper {
     tilingForScreen(desktop: number): TileManager;
     supportInformation(): string;
     clientList(): AbstractClient[];
-    clientArea(option: ClientAreaOption, screen: number, desktop: number): QRect;
-    clientArea(option: ClientAreaOption, client: AbstractClient): QRect;
+    clientArea(option: number, screen: number, desktop: number): QRect;
+    clientArea(option: number, client: AbstractClient): QRect;
     slotWindowMaximize: () => void
-    // doesnt actually exist in api but convenient place to keep state
-    tmpLastActiveClient: AbstractClient | null | undefined;
-    previousActiveClient: AbstractClient | null | undefined;
-    lastActiveScreen: number | undefined;
-    lastActivity: string | undefined;
-    lastDesktop: number | undefined;
+
     // signals
     clientAdded: Signal<(client: AbstractClient) => void>;
     clientRemoved: Signal<(client: AbstractClient) => void>;
@@ -340,17 +340,3 @@ declare interface DBusCall {
     finished: Signal<(returnValues: any[]) => void>;
     call(): void;
 }
-
-
-/* KWin global objects */
-declare var workspace: WorkspaceWrapper;
-declare var options: Options;
-
-declare var workspace: WorkspaceWrapper;
-declare var options: Options;
-declare var kwin: Api;
-declare var createTimer: () => QTimer;
-declare var createDBusCall: () => DBusCall;
-declare var showDialog: (text: string) => void;
-//export let settingsDialog: Qml.SettingsDialog;
-declare var dbusClientInstalled: boolean;

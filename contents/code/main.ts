@@ -93,7 +93,7 @@ class Tiler{
             client.tile = null;
             this.retileOther(client)
         });
-    };
+    }
 
     private isSameActivityAndDesktop(client: AbstractClient): boolean{
         return (client.onAllDesktops || client.desktop === workspace.currentDesktop) &&
@@ -133,9 +133,6 @@ class Tiler{
         this.doLog(LogLevel.INFO, `> attachClient ${this.clientToString(client)}`);
         client.clientFinishUserMovedResized.connect(this.clientFinishUserMovedResizedListener);
         client.desktopChanged.connect(this.desktopChangedListener);
-
-        //client.desktop = workspace.activeScreen;
-
         this.tileClient(client, "attachClient");
     }
 
@@ -149,6 +146,7 @@ class Tiler{
         this.retileOther(client);
     }
 
+    /* eslint-disable  @typescript-eslint/no-explicit-any */
     private doLog(level: LogLevel, ...value: any){
         if(level > this.config.logLevel){
             return;
@@ -218,7 +216,7 @@ class Tiler{
         const tileManager = workspace.tilingForScreen(client.screen);
 
         // Ask where is the best location for this current window and assign it to the client.
-        let bestTileForPosition = tileManager.bestTileForPosition(center.x, center.y);
+        const bestTileForPosition = tileManager.bestTileForPosition(center.x, center.y);
 
         this.doLog(LogLevel.INFO, `doTile: ${this.clientToString(client)} to ${bestTileForPosition?.toString()} (${reason}) screen ${client.screen}`);
 
@@ -238,7 +236,7 @@ class Tiler{
                 this.doLog(LogLevel.NOTICE, `no root tile for screen ${screen} ??`);
                 return [];
             }
-            let toHandle: Tile[] = [root];
+            const toHandle: Tile[] = [root];
             // Get all tiles
             while(toHandle.length > 0){
                 const tile = toHandle.pop();
@@ -342,7 +340,7 @@ class Tiler{
                 this.doTile(otherClient, "retileOther: Untiled windows"); // We skip the client that changed
         })
 
-        let freeTileOnScreens: Map<Number, Tile[]> = new Map();
+        const freeTileOnScreens: Map<number, Tile[]> = new Map();
         let freeTilesOverall: Tile[] = []
 
 
@@ -366,7 +364,7 @@ class Tiler{
         // For each screen
         this.getAllScreensNumbers(client.screen).forEach((screen: number) =>
         {
-            let freeTileOnScreen = freeTileOnScreens.get(screen) ?? [];
+            const freeTileOnScreen = freeTileOnScreens.get(screen) ?? [];
 
             // Move stacked window to a free tile if any
             this.getAllTiles(screen).forEach((tile: Tile) => {
@@ -410,7 +408,7 @@ class Tiler{
         });
     }
 
-    private getUntiledClientOnScreen(screen: Number) {
+    private getUntiledClientOnScreen(screen: number) {
         return workspace.clientList().filter(this.isSupportedClient).filter(this.isSameActivityAndDesktop).filter((client: AbstractClient) => {
             return client.screen === screen && client.tile === null && !client.minimized;
         })
@@ -521,7 +519,6 @@ class Tiler{
 
         if (clientToMove && freeTile) {
             this.debug(`Move ${this.clientToString(clientToMove)} from ${clientToMove.tile?.toString()} to ${freeTile.toString()}`);
-            // @ts-ignore freeTileOnScreen is not empty
             clientToMove.tile = freeTile;
             return freeTile
         }

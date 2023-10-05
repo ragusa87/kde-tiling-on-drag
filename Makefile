@@ -29,7 +29,9 @@ clear: # Clear build files and artifacts
 	rm -f contents/code/main.js
 	npm install
 lint: clear # Lint
-	npx eslint $(MAIN_FILE_TYPESCRIPT)
+	npx eslint -c .eslintrc.json contents
+fix: clear # Lint and fix
+	npx eslint -c .eslintrc.json contents --fix
 build: clear compile # Build package
 	mkdir -p build/contents/code
 	cp -r contents/code build/contents/

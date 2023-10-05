@@ -25,6 +25,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Lint TypeScript
+        run: make lint
+
       - name: Compile TypeScript and build the artifact
         run: make build
 

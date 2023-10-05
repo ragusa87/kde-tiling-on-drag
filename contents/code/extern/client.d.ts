@@ -124,7 +124,7 @@ declare interface AbstractClient extends Toplevel {
     readonly transient: boolean;
     // transientFor
     readonly modal: boolean;
-    readonly geometry: QRect;
+    geometry: QRect;
     frameGeometry: QRect; //  is read/write for abstractclient
     readonly move: boolean;
     //readonly resize: boolean;

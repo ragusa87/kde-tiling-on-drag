@@ -429,10 +429,6 @@ class Tiler{
             this.doLogIf(this.config.logMaximize, LogLevel.DEBUG, `Change padding to resize ${this.clientToString(client)}`)
             client.tile.padding += 1;
             client.tile.padding -= 1;
-
-            // const oldLayoutDirection = client.tile.layoutDirection
-            // client.tile.layoutDirection = client.tile.layoutDirection !== 2 ? 2 : 1;
-            // client.tile.layoutDirection = oldLayoutDirection;
         }else{
             this.doLogIf(this.config.logMaximize, LogLevel.WARNING, `Force tiling an untiled window ${this.clientToString(client)}`)
 

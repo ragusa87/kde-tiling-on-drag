@@ -447,7 +447,7 @@ class Tiler{
         const tab3 = tab2 + tab;
         const tab4 = tab3 + tab;
         this.getAllScreensNumbers(0).forEach((screen: number) => {
-            output += `screen ${screen} - ${workspace.clientList().filter(this.isSupportedClient).filter(this.isSameActivityAndDesktop).filter((client: AbstractClient) => client.screen === screen).length} clients on screen, untiled: ${this.getUntiledClientOnScreen(screen).length} \n`;
+            output += `screen ${screen} - tiled: ${this.getTiledClientsOnScreen(screen).length} untiled: ${this.getUntiledClientOnScreen(screen).length} \n`;
             if(this.getUntiledClientOnScreen(screen).length > 0) {
                 output += `${tab2} - untiled:\n${this.getUntiledClientOnScreen(screen).map((client: AbstractClient) => `${tab3} - ${this.clientToString(client)}`).join(", ")}\n`;
             }

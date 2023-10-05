@@ -16,6 +16,7 @@ class Config {
         this.logLevel = debug ? LogLevel.DEBUG: LogLevel.NOTICE;
         this.logMaximize = debug
         this.logDebugTree = debug
+        this.logEvents = debug
     }
 
     setLogWindowProperties(value: boolean){
@@ -23,11 +24,12 @@ class Config {
     }
     logLevel: LogLevel;
     logMaximize: boolean;
+    logEvents: boolean;
     logWindowProperties: boolean = false;
     logDebugTree: boolean;
     logDebugScreens: boolean = false;
-    logEvents: boolean = false;
     doMaximizeSingleWindow: boolean = true;
+    doMaximizeWhenNoLayoutExists: boolean = true;
 }
 
 class Tiler{
@@ -92,6 +94,23 @@ class Tiler{
             this.event( `clientMinimized: ${this.clientToString(client)}`)
             client.tile = null;
             this.retileOther(client)
+        });
+
+        // If you edit the layout, re-tile all windows
+        this.getAllScreensNumbers(0).forEach((screen: number) => {
+            const tileManager = workspace.tilingForScreen(screen);
+            if(tileManager === null){
+                this.doLog(LogLevel.WARNING, `No tileManager for screen ${screen} ??`);
+                return
+            }
+            if(tileManager.rootTile === null){
+                this.doLog(LogLevel.WARNING, `No root tile for screen ${screen} ??`);
+                return
+            }
+            workspace.tilingForScreen(screen).rootTile.layoutModified.connect(() => {
+                this.event(`layoutModified on screen: ${screen}`)
+                this.handleMaximizeMinimize(screen, "layoutModified")
+            });
         });
     }
 
@@ -217,7 +236,10 @@ class Tiler{
 
         // Ask where is the best location for this current window and assign it to the client.
         const bestTileForPosition = tileManager.bestTileForPosition(center.x, center.y);
-
+        if(bestTileForPosition === null && this.config.doMaximizeWhenNoLayoutExists){
+            this.doLog(LogLevel.DEBUG, `No tile exists for ${this.clientToString(client)}, maximize it instead`);
+            client.geometry = workspace.clientArea(KWin.MaximizeArea, client.screen, client.desktop);
+        }
         this.doLog(LogLevel.INFO, `doTile: ${this.clientToString(client)} to ${bestTileForPosition?.toString()} (${reason}) screen ${client.screen}`);
 
         client.tile = bestTileForPosition

@@ -357,7 +357,11 @@ class Tiler{
             // Ignore Konsole's confirm dialogs
             !(client.caption.startsWith("Confirm ") && client.resourceClass === "org.kde.konsole") &&
             // Ignore Spectacle's dialogs
-            !(client.resourceClass === "org.kde.spectacle")
+            !(client.resourceClass === "org.kde.spectacle") &&
+            // Ignore Klipper's "Action Popup menu"
+            !(client.resourceClass === "org.kde.plasmashell" && client.caption === "Plasma") &&
+            // Ignore jetbrains's "Splash screen"
+            !(client.resourceClass.includes("jetbrains") && client.caption === "splash")
     }
 
     // Used for logging

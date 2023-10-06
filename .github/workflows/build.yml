@@ -28,6 +28,14 @@ jobs:
       - name: Lint TypeScript
         run: make lint
 
+      - name: Alter version number
+        run: |
+          VERSION=${GITHUB_REF#refs\/tags\/}
+          VERSION=$(echo $VERSION | sed 's#/#-#g')
+          if [[ ! -z "${VERSION}" ]]; then
+            echo "Alter version number to ${VERSION}"
+            sed -i "s/v0.1.1/${VERSION}/" metadata.json  
+          fi
       - name: Compile TypeScript and build the artifact
         run: make build
 

@@ -5,6 +5,14 @@ export function clientToString(client: AbstractClient|undefined|null):string{
     return `${client.resourceName} ${client.internalId} ${client.screen}, ${client.desktop} ${client.activities.join(", ")}`;
 }
 
+export function tileToString(tile: Tile|undefined|null):string{
+    if(!tile){
+        return `null`
+    }
+    return `${tile.toString()} - ${tile.parent ? tile.parent.toString() : "no parent"}`
+}
+
+
 export function clientProperties (client: AbstractClient):string{
        return `> properties for ${clientToString(client)}
                 normalWindow? ${client.normalWindow}

@@ -11,6 +11,9 @@
         <entry name="logWindowProperties" type="bool">
             <default>false</default>
         </entry>
+        <entry name="showOutline" type="bool">
+            <default>true</default>
+        </entry>
     </group>
 
 </kcfg>

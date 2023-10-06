@@ -19,8 +19,14 @@ class Config {
         this.logEvents = debug
     }
 
-    setLogWindowProperties(value: boolean){
+    setLogWindowProperties(value: boolean):Config{
         this.logWindowProperties = value;
+        return this;
+    }
+
+    setShowOutline(value: boolean):Config{
+        this.doShowOutline = value;
+        return this;
     }
     logLevel: LogLevel;
     logMaximize: boolean;
@@ -593,7 +599,9 @@ class Tiler{
 
 const isDebug = readConfig("isDebug", false);
 const config = new Config(isDebug);
-config.setLogWindowProperties(readConfig("logWindowProperties", false))
+config
+    .setLogWindowProperties(readConfig("logWindowProperties", false))
+    .setShowOutline(readConfig("showOutline", true))
 
 console.log(`Tiling started with debug: ${isDebug}`)
 new Tiler(config);

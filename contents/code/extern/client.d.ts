@@ -66,7 +66,7 @@ declare interface AbstractClient extends Toplevel {
     // output: number; Unable to handle unregistered datatype 'KWin::Output*'
     // rect: QRectF
     readonly resourceName: string;
-    resourceClass: QByteArray;
+    resourceClass: string;
     windowRole: string;
     // minimizedChanged: Signal
     readonly desktopWindow: boolean;

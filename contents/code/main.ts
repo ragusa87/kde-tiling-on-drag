@@ -1,43 +1,8 @@
-enum LogLevel
-{
-    // Highest priority => the lowest number
-    EMERGENCY = 1 << 1,
-    ALERT     = 1 << 2,
-    CRITICAL  = 1 << 3,
-    ERROR     = 1 << 4,
-    WARNING   = 1 << 5,
-    NOTICE    = 1 << 6,
-    INFO      = 1 << 7,
-    DEBUG     = 1 << 8,
-}
+import {Config} from "./config";
+import {LogLevel} from "./logLevel";
 
-class Config {
-    constructor(debug: boolean = false) {
-        this.logLevel = debug ? LogLevel.DEBUG: LogLevel.NOTICE;
-        this.logMaximize = debug
-        this.logDebugTree = debug
-        this.logEvents = debug
-    }
 
-    setLogWindowProperties(value: boolean):Config{
-        this.logWindowProperties = value;
-        return this;
-    }
 
-    setShowOutline(value: boolean):Config{
-        this.doShowOutline = value;
-        return this;
-    }
-    logLevel: LogLevel;
-    logMaximize: boolean;
-    logEvents: boolean;
-    logWindowProperties: boolean = false;
-    logDebugTree: boolean;
-    logDebugScreens: boolean = false;
-    doMaximizeSingleWindow: boolean = true;
-    doMaximizeWhenNoLayoutExists: boolean = true;
-    doShowOutline: boolean = true;
-}
 
 class Tiler{
     config: Config;

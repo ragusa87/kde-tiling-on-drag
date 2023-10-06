@@ -1,7 +1,7 @@
 import {Config} from "./config";
 import {LogLevel} from "./logLevel";
 import {log} from "./logger";
-import {clientToString, clientProperties} from "./clientHelper";
+import {clientToString, clientProperties, tileToString} from "./clientHelper";
 
 export class Tiler{
     config: Config;
@@ -244,6 +244,11 @@ export class Tiler{
                 return tile !== root;
             })
 
+            // Keep only tiles without sub-tiles
+            tiles = tiles.filter((tile: Tile) => {
+                return tile.tiles.length ===  0;
+            })
+
         });
 
         // Take the leaves at first
@@ -453,12 +458,12 @@ export class Tiler{
         const tab3 = tab2 + tab;
         const tab4 = tab3 + tab;
         this.getAllScreensNumbers(0).forEach((screen: number) => {
-            output += `screen ${screen} - tiled: ${this.getTiledClientsOnScreen(screen).length} untiled: ${this.getUntiledClientOnScreen(screen).length} \n`;
+            output += `screen ${screen} - tiled: ${this.getTiledClientsOnScreen(screen).length} untiled: ${this.getUntiledClientOnScreen(screen).length} number of tiles: ${this.getAllTiles(screen).length} \n`;
             if(this.getUntiledClientOnScreen(screen).length > 0) {
                 output += `${tab2} - untiled:\n${this.getUntiledClientOnScreen(screen).map((client: AbstractClient) => `${tab3} - ${clientToString(client)}`).join(", ")}\n`;
             }
             this.getAllTiles(screen).forEach((tile: Tile) => {
-                output += (`${tab2} -  ${tile.toString()} clients: ${this.getClientOnTile(tile).length} (un-filtered ${tile.windows.length})\n`)
+                output += (`${tab2} -  ${tileToString(tile)} clients: ${this.getClientOnTile(tile).length} (un-filtered ${tile.windows.length})\n`)
                 this.getClientOnTile(tile).forEach((client: AbstractClient) => {
                     output += (`${tab4} * ${clientToString(client)}\n`);
                 })

@@ -53,10 +53,21 @@ class Tiler{
                 return
             }
 
+            // Calculate the outline geometry
             const center = this.getCenter(geometry);
-            const tile = workspace.tilingForScreen(client.screen).bestTileForPosition(center.x, center.y)
-            if(tile){
-                workspace.showOutline(tile.absoluteGeometry);
+            const tile = workspace.tilingForScreen(client.screen)?.bestTileForPosition(center.x, center.y)
+            let outlineGeometry = tile ? tile.absoluteGeometry : null;
+
+            // If we have more than one window on the screen, show the outline maximized
+            const numberOfOtherTiledWindows = this.getTiledClientsOnScreen(client.screen).filter((otherClient: AbstractClient) => otherClient !== client).length;
+            const numberOfOtherUnTiledWindows = this.getUntiledClientOnScreen(client.screen).filter((otherClient: AbstractClient) => otherClient !== client).length;
+
+            if(numberOfOtherTiledWindows + numberOfOtherUnTiledWindows === 0 && this.config.doMaximizeSingleWindow){
+                outlineGeometry = workspace.clientArea(KWin.MaximizeArea, client.screen, client.desktop);
+            }
+
+            if(outlineGeometry !== null){
+                workspace.showOutline(outlineGeometry);
             }
         };
 

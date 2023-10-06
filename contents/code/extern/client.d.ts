@@ -160,6 +160,8 @@ declare interface AbstractClient extends Toplevel {
     activitiesChanged: Signal<(client: AbstractClient) => void>;
     clientMaximizedStateChanged: Signal<(client: AbstractClient, horizontal: boolean, vertical: boolean) => void>;
     clientFinishUserMovedResized: Signal<(client: AbstractClient) => void>;
+    clientStepUserMovedResized: Signal<(client: AbstractClient, geometry: QRect) => void>;
+    moveResizedChanged: Signal<() => void>;
     quickTileModeChanged: Signal<() => void>;
     minimizedChanged: Signal<() => void>;
     outputChanged: Signal<() => void>;
@@ -314,6 +316,9 @@ declare interface WorkspaceWrapper {
     clientList(): AbstractClient[];
     clientArea(option: number, screen: number, desktop: number): QRect;
     clientArea(option: number, client: AbstractClient): QRect;
+    hideOutline(): void;
+    showOutline(geometry: QRect): void;
+    showOutline(x: number,  y:number,  width:number,  height:number): void;
     slotWindowMaximize: () => void
 
     // signals

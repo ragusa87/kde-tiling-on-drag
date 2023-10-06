@@ -30,11 +30,13 @@ class Config {
     logDebugScreens: boolean = false;
     doMaximizeSingleWindow: boolean = true;
     doMaximizeWhenNoLayoutExists: boolean = true;
+    doShowOutline: boolean = true;
 }
 
 class Tiler{
     config: Config;
     clientFinishUserMovedResizedListener: (client: AbstractClient) => void;
+    clientStepUserMovedResizedListener: (client: AbstractClient, geometry: QRect) => void;
     desktopChangedListener: () => void;
 
     constructor(config: Config){
@@ -45,7 +47,18 @@ class Tiler{
             this.tileClient(client, "clientFinishUserMovedResized")
         };
 
+        this.clientStepUserMovedResizedListener = (client: AbstractClient, geometry: QRect) => {
+            this.event( `clientStepUserMovedResizedListener ${this.clientToString(client)}`)
+            if(!this.config.doShowOutline){
+                return
+            }
 
+            const center = this.getCenter(geometry);
+            const tile = workspace.tilingForScreen(client.screen).bestTileForPosition(center.x, center.y)
+            if(tile){
+                workspace.showOutline(tile.absoluteGeometry);
+            }
+        };
 
         this.desktopChangedListener = () => {
             this.event(`currentDesktopChanged`)
@@ -151,6 +164,7 @@ class Tiler{
     private attachClient(client: AbstractClient){
         this.doLog(LogLevel.INFO, `> attachClient ${this.clientToString(client)}`);
         client.clientFinishUserMovedResized.connect(this.clientFinishUserMovedResizedListener);
+        client.clientStepUserMovedResized.connect(this.clientStepUserMovedResizedListener);
         client.desktopChanged.connect(this.desktopChangedListener);
         this.tileClient(client, "attachClient");
     }
@@ -159,6 +173,7 @@ class Tiler{
     private detachClient(client: AbstractClient){
         this.doLog(LogLevel.INFO, `> detachClient ${this.clientToString(client)}`);
         client.clientFinishUserMovedResized.disconnect(this.clientFinishUserMovedResizedListener);
+        client.clientStepUserMovedResized.disconnect(this.clientStepUserMovedResizedListener);
         client.desktopChanged.disconnect(this.desktopChangedListener);
 
         client.tile = null;

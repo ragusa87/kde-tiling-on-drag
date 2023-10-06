@@ -23,10 +23,11 @@ list: # help
 	@grep '^[^#[:space:]].*:' Makefile
 compile: # Compile typescript
 	npx tsc
+	npx rollup contents/code/main.js --format cjs --file contents/code/all.js
 clear: # Clear build files and artifacts
 	rm -f "$(KWINPKG_FILE)"
 	rm -Rf build
-	rm -f contents/code/main.js
+	rm -f contents/code/*.js
 	npm install
 lint: clear # Lint
 	npx eslint -c .eslintrc.json contents
@@ -37,8 +38,12 @@ build: clear compile # Build package
 	cp -r contents/code build/contents/
 	cp -r contents/config build/contents/
 	cp -r contents/ui build/contents/
+	@find "build/" '(' -name "*.js" ')' -delete
 	@find "build/" '(' -name "*.ts" ')' -delete
 	@find "build/" -type d -empty -print -delete
+	mkdir -p build/contents/code/
+	cp contents/code/all.js build/contents/code/main.js
 	cp metadata.json build/
 	@7z a -tzip $(KWINPKG_FILE) ./build/*
 	rm -f $(MAIN_FILE)
+	rm -f contents/code/all.js

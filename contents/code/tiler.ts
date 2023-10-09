@@ -23,8 +23,8 @@ export class Tiler{
             }
 
             // Calculate the outline geometry
-            const center = this.getCenter(geometry);
-            const tile = workspace.tilingForScreen(client.screen)?.bestTileForPosition(center.x, center.y)
+            const position = this.getPosition(geometry);
+            const tile = workspace.tilingForScreen(client.screen)?.bestTileForPosition(position.x, position.y)
             let outlineGeometry = tile ? tile.absoluteGeometry : null;
 
             // If we have more than one window on the screen, show the outline maximized
@@ -158,13 +158,22 @@ export class Tiler{
     }
 
     /**
-     * Return the center of the geometry, it's used to find the best tile for a window
-     * TODO: Find a way to use the cursor position instead of the center of the window
+     * Return the coordinate used to find the best tile for a window.
+     * Either the cursor's position or the center of the window.
      */
-    private getCenter(geometry: QRect){
+    private getPosition(geometry: QRect){
+        const cursorX = workspace.cursorPos.x
+        const cursorY = workspace.cursorPos.y
+        // If the cursor is within the window's bounds, we are dragging the window => use the cursor's position
+        if(cursorX >= geometry.x && cursorX <= geometry.x + geometry.width && cursorY >= geometry.y && cursorY <= geometry.y + geometry.height){
+            return {x:cursorX,y:cursorY};
+        }
+
+        // Use the center of the window (Not sure if we even need this)
         const x: number = geometry.x + (geometry.width/2)
         const y: number = geometry.y + (geometry.height/2)
-        return {x,y};
+
+        return {x,y}
     }
 
     /**
@@ -186,14 +195,14 @@ export class Tiler{
      */
     private doTile(client: AbstractClient, reason: string = ""){
 
-        // Take the windows current position at center
-        const center = this.getCenter(client.geometry);
+        // Take the current position to find the best tile
+        const position = this.getPosition(client.geometry);
 
         // Get the tiling manager from KDE
         const tileManager = workspace.tilingForScreen(client.screen);
 
         // Ask where is the best location for this current window and assign it to the client.
-        const bestTileForPosition = tileManager.bestTileForPosition(center.x, center.y);
+        const bestTileForPosition = tileManager.bestTileForPosition(position.x, position.y);
         if(bestTileForPosition === null && this.config.doMaximizeWhenNoLayoutExists){
             this.doLog(LogLevel.DEBUG, `No tile exists for ${clientToString(client)}, maximize it instead`);
             client.geometry = workspace.clientArea(KWin.MaximizeArea, client.screen, client.desktop);

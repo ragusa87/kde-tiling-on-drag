@@ -17,26 +17,10 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
-
-
 declare interface Signal<T> {
     connect(callback: T): void;
     disconnect(callback: T): void;
 }
-
-declare interface QSignal {
-    connect(callback: any): void;
-    disconnect(callback: any): void;
-}
-
-interface QTimer {
-    timeout: QSignal;
-    start(durationMs: number): void;
-    stop(): void;
-}
-
-/* Common Javascript globals */
-
 
 // QJSEngine::ConsoleExtension https://doc.qt.io/qt-5/qjsengine.html#ConsoleExtension-enum
 interface Console {
@@ -55,8 +39,7 @@ interface Console {
 }
 
 
-declare let QTimer:  QQmlTimer;
-
+declare let QTimer:  QTimerInterface;
 /* KWin global objects */
 declare let console: Console;
 declare var workspace: WorkspaceWrapper;

@@ -18,11 +18,6 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-
-interface QByteArray {
-    /* keep it empty for now */
-}
-
 interface QRect {
     height: number;
     width: number;
@@ -40,24 +35,19 @@ interface QSize {
     height: number;
 }
 
-interface QSignal {
-    connect(callback: any): void;
-    disconnect(callback: any): void;
-}
-
 /* Reference: http://doc.qt.io/qt-5/qml-qtqml-timer.html */
-interface QQmlTimer {
+interface QTimerInterface {
+    new () : QTimerInterface
+    timeout: Signal<() => void>;
+    singleShot: boolean;
     interval: number;
     repeat: boolean;
     running: boolean;
     triggeredOnStart: boolean;
-
-    triggered: QSignal;
-
+    triggered: Signal<() => void>;
     restart(): void;
-    start(): void;
+    start(durationMs: number): void;
     stop(): void;
-    setSingleShot(singeShot: boolean): void;
 }
 
 

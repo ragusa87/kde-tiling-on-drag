@@ -3,12 +3,11 @@ import {LogLevel} from "./logLevel";
 import {log} from "./logger";
 import {clientToString, clientProperties, tileToString} from "./clientHelper";
 import {cancelTimeout, setTimeout} from "./timeout";
-
 export class Tiler{
     config: Config;
     clientFinishUserMovedResizedListener: (client: AbstractClient) => void;
     clientStepUserMovedResizedListener: (client: AbstractClient, geometry: QRect) => void;
-    private timeout: number|null = null;
+    private timer: QTimerInterface|null = null;
 
     constructor(config: Config){
         this.config = config;
@@ -106,10 +105,10 @@ export class Tiler{
             }
             workspace.tilingForScreen(screen).rootTile.layoutModified.connect(() => {
                 // defer execution to avoid multiple calls on tile resizing
-                if(this.timeout !== null){
-                    cancelTimeout(this.timeout);
+                if(this.timer !== null){
+                    cancelTimeout(this.timer);
                 }
-                this.timeout = setTimeout(() =>{
+                this.timer = setTimeout(() =>{
                     this.event(`layoutModified on screen: ${screen}`)
                     this.handleMaximizeMinimize(screen, "layoutModified")
 

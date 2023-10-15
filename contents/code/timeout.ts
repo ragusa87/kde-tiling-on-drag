@@ -1,30 +1,14 @@
 
-interface QTimer {
-    timeout: QSignal;
-    start(durationMs: number): void;
-    stop(): void;
-}
-
-declare interface QSignal {
-    connect(callback: any): void;
-    disconnect(callback: any): void;
-}
-
-let timers: QTimer[] = [];
-export function setTimeout (callback: any, duration: number): number{
-    // @ts-ignore QTime is exposed by KWIN/QT, so it exists anyway.
-    let timer = new QTimer();
-    timers.push(timer);
+export function setTimeout (callback: () => void, duration: number): QTimerInterface{
+    // QTimer is exposed by KWIN/QT, so it exists anyway.
+    const timer: QTimerInterface = new QTimer();
     timer.singleShot = true;
     timer.timeout.connect(callback);
     timer.start(duration);
-    return timers.length -1
+
+    return timer;
 }
 
-export function cancelTimeout(timerId: number): boolean{
-    if(timers[timerId] === undefined){
-        return false;
-    }
-    timers[timerId].stop();
-    return true;
+export function cancelTimeout(timer: QTimerInterface): void{
+    timer.stop();
 }

@@ -8,7 +8,7 @@ Single windows are maximized automatically.
 
 Demo:
 
- ![demo](https://github.com/ragusa87/kde-tiling-on-drag/assets/1695207/c68bf60f-9a95-4037-9560-2b9d79dc3e9f)
+ ![demo](https://github.com/ragusa87/kde-tiling-on-drag/assets/1695207/c99ce67c-e9c4-4117-9141-9f37bf9c4e0d)
 
 Resources :
 

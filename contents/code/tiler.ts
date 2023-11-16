@@ -10,16 +10,22 @@ export class Tiler{
     clientStepUserMovedResizedListener: (client: AbstractClient, geometry: QRect) => void;
     private timer: QTimerInterface|null = null;
     clientScreenChangedListener: () => void;
-
+    isMoving: boolean = false; // True if the user is moving a window (set by clientStepUserMovedResizedListener/clientFinishUserMovedResizedListener)
     constructor(config: Config){
         this.config = config;
 
         this.clientFinishUserMovedResizedListener = (client: AbstractClient) => {
             this.event( `clientFinishUserMovedResized ${clientToString(client)}`)
+            this.isMoving = false;
             this.tileClient(client, "clientFinishUserMovedResized")
         };
 
         this.clientScreenChangedListener = () => {
+            // When the used is moving a window (clientStepUserMovedResized) to another screen, the screenChanged event is triggered.
+            // We need to skip it, otherwise the window will be re-tiled even if the user did not complete the move (clientFinishUserMovedResizedListener)
+            if(this.isMoving){
+                return;
+            }
             this.event(`clientScreenChangedListener`)
             if(workspace.activeClient === null){
                 this.doLog(LogLevel.WARNING, `clientScreenChangedListener: workspace.activeClient is null`);
@@ -29,7 +35,8 @@ export class Tiler{
         }
 
         this.clientStepUserMovedResizedListener = (client: AbstractClient, geometry: QRect) => {
-            this.event( `clientStepUserMovedResizedListener ${clientToString(client)}`)
+            this.event( `clientStepUserMovedResizedListener`)
+            this.isMoving = true;
             if(!this.config.doShowOutline){
                 return
             }

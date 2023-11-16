@@ -152,7 +152,8 @@ export class Tiler{
         if(!this.config.logWindowProperties){
             return;
         }
-        this.doLog(LogLevel.DEBUG,  `${clientProperties(client)}\n---> Supported? ${this.isSupportedClient(client)}`);
+        // we use console debug here, so we can log properties without enabling the debug mode
+        console.debug(`${clientProperties(client)}\n---> Supported? ${this.isSupportedClient(client)}`);
     }
 
     /**

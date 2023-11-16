@@ -337,7 +337,9 @@ export class Tiler{
             // Ignore Klipper's "Action Popup menu"
             !(client.resourceClass === "org.kde.plasmashell" && client.caption === "Plasma") &&
             // Ignore jetbrains's "Splash screen"
-            !(client.resourceClass.includes("jetbrains") && client.caption === "splash")
+            !(client.resourceClass.includes("jetbrains") && client.caption === "splash") &&
+            // Ignore "Steam apps"
+            !(client.resourceClass.startsWith("steam_app_"))
     }
 
     /**

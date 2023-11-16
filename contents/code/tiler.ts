@@ -1,8 +1,9 @@
 import {Config} from "./config";
 import {LogLevel} from "./logLevel";
 import {log} from "./logger";
-import {clientToString, clientProperties, tileToString} from "./clientHelper";
+import {clientProperties, clientToString, tileToString} from "./clientHelper";
 import {cancelTimeout, setTimeout} from "./timeout";
+
 export class Tiler{
     config: Config;
     clientFinishUserMovedResizedListener: (client: AbstractClient) => void;
@@ -358,6 +359,7 @@ export class Tiler{
     private retileOther(client: AbstractClient) {
         this.doLog(LogLevel.DEBUG, `re-tile other windows due to change on ${clientToString(client)}. Screen: ${client.screen}`);
 
+        const justRetiled: AbstractClient[] = [];
         // Tile all clients (this will un-maximize maximized window)
         workspace.clientList()
             .filter(this.isSupportedClient)
@@ -366,6 +368,7 @@ export class Tiler{
             .filter((otherClient: AbstractClient) => otherClient.tile === null)
             .forEach((otherClient: AbstractClient) => {
                 this.doTile(otherClient, "retileOther: Untiled windows"); // We skip the client that changed
+                justRetiled.push(otherClient);
             })
 
 
@@ -381,6 +384,14 @@ export class Tiler{
                     freeTilesOverall.push(tile);
                 }
             });
+
+            // Update the list of free tiles on the screen, given that justRetiled windows are not yet pushed to the tile's windows list.
+            justRetiled.forEach((retiledClient: AbstractClient) => {
+                if (retiledClient.tile) {
+                    currentFreeTiles.indexOf(retiledClient.tile) !== -1 && currentFreeTiles.splice(currentFreeTiles.indexOf(retiledClient.tile), 1);
+                    freeTilesOverall.indexOf(retiledClient.tile) !== -1 && freeTilesOverall.splice(freeTilesOverall.indexOf(retiledClient.tile), 1);
+                }
+            });
             freeTileOnScreens.set(screen,currentFreeTiles)
         });
 
@@ -389,33 +400,57 @@ export class Tiler{
         {
             const freeTileOnScreen = freeTileOnScreens.get(screen) ?? [];
             // Move stacked window to a free tile if any
-            this.getAllTiles(screen).forEach((tile: Tile) => {
+            this.getAllTiles(screen).every((tile: Tile) => {
+                this.doLog(LogLevel.DEBUG, `re-tile other windows. \n\tScreen: ${screen}\n\ttile: ${tileToString(tile)}`);
 
                 const otherClientsOnTile = this.getClientOnTile(tile);
+                // Re-tiled clients are not detected by getClientOnTile, so we need to add them manually.
+                // I don't know why Kwin does update the tile's windows list on the fly.
+                justRetiled.forEach((client: AbstractClient) => {
+                     if(client.tile === tile){
+                        this.doLog(LogLevel.DEBUG, `Add ${clientToString(client)} to otherClientsOnTile`)
+                        otherClientsOnTile.push(client);
+                    }
+                 });
+
                 const untiledClientsOnScreen = this.getUntiledClientOnScreen(screen);
+
+                this.doLog(LogLevel.DEBUG, `re-tile other windows. \n\tScreen: ${screen}\n\ttile: ${tileToString(tile)}\n\totherClientsOnTile: ${otherClientsOnTile.length}\n\tuntiledClientsOnScreen: ${untiledClientsOnScreen.length}`);
 
                 // As the tile is used by more than one client, move one of them to a free tile on the same screen.
                 if (otherClientsOnTile.length > 1 && freeTileOnScreen.length > 0) {
                     if(this.moveClientToFreeTile(client, otherClientsOnTile, freeTileOnScreen,  "otherClientsOnTile")){
                         const usedTile = freeTileOnScreen.shift();
                         freeTilesOverall = freeTilesOverall.filter((tile: Tile) => tile !== usedTile);
-                        return;
+                        return false;
                     }
                 }
-
                 // Move untiled client to a free tile if any, as we try to have all the clients tiled
                 if(untiledClientsOnScreen.length > 0 && freeTileOnScreen.length > 0){
                     if(this.moveClientToFreeTile( client, untiledClientsOnScreen, freeTileOnScreen, "untilled client")){
                         const usedTile = freeTileOnScreen.shift();
                         freeTilesOverall = freeTilesOverall.filter((tile: Tile) => tile !== usedTile);
-                        return
+                        return false
                     }
                 }
 
                 // As the tile is used by more than one client, move one of them to a free tile on another screen.
                 if(otherClientsOnTile.length > 1 && freeTilesOverall.length > 0) {
-                    this.doLog(LogLevel.DEBUG, `TODO We could move one client to a free tile on another screen`);
+                    this.doLog(LogLevel.DEBUG, `Move one client to a free tile on another screen`);
+                    let oneClient = otherClientsOnTile.pop();
+                    if(oneClient === client){
+                        // The client that changed is on this tile, so we need to take another one
+                        oneClient = otherClientsOnTile.pop();
+                    }
+                    if(oneClient !== undefined) {
+                        const oneTile = freeTilesOverall.shift() || null
+                        this.doLog(LogLevel.DEBUG, `Move ${clientToString(oneClient)} to ${oneTile}`)
+                        oneClient.tile = oneTile;
+                        this.forceRedraw(oneTile);
+                        return false;
+                    }
                 }
+                return true;
             });
         })
 
@@ -467,8 +502,7 @@ export class Tiler{
         // Change a tile setting, so all windows in it got repositioned
         if(client.tile !== null){
             this.doLogIf(this.config.logMaximize, LogLevel.DEBUG, `Change padding to resize ${clientToString(client)}`)
-            client.tile.padding += 1;
-            client.tile.padding -= 1;
+            this.forceRedraw(client.tile)
         }else{
             // Sometimes, the client is not tiled as doMaximizeWhenNoLayoutExists is off, so we do not have any tile.
             this.doLogIf(this.config.logMaximize, LogLevel.WARNING, `Force tiling an untiled window ${clientToString(client)}`)
@@ -561,6 +595,7 @@ export class Tiler{
         if (clientToMove && freeTile) {
             this.doLog(LogLevel.DEBUG, `Move ${clientToString(clientToMove)} from ${clientToMove.tile?.toString()} to ${freeTile.toString()}`);
             clientToMove.tile = freeTile;
+            this.forceRedraw(freeTile);
             return freeTile
         }
         return null;
@@ -591,5 +626,13 @@ export class Tiler{
 
     public toString(){
         return "Tiler"
+    }
+
+    private forceRedraw(tile: Tile|null) {
+        if(tile === null) {
+            return;
+        }
+        tile.padding += 1;
+        tile.padding -= 1;
     }
 }

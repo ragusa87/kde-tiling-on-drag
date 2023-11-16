@@ -47,6 +47,8 @@ export class Tiler{
             }
 
             if(outlineGeometry !== null){
+                // Show the outline, note that we have no way to set the "outline visualParentGeometry" so no animation is shown
+                // A "TypeError exception" is thrown if the outlineGeometry object is altered, so the padding is not supported.
                 workspace.showOutline(outlineGeometry);
             }
         };

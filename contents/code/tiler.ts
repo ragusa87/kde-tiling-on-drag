@@ -8,6 +8,7 @@ export class Tiler{
     clientFinishUserMovedResizedListener: (client: AbstractClient) => void;
     clientStepUserMovedResizedListener: (client: AbstractClient, geometry: QRect) => void;
     private timer: QTimerInterface|null = null;
+    clientScreenChangedListener: () => void;
 
     constructor(config: Config){
         this.config = config;
@@ -16,6 +17,15 @@ export class Tiler{
             this.event( `clientFinishUserMovedResized ${clientToString(client)}`)
             this.tileClient(client, "clientFinishUserMovedResized")
         };
+
+        this.clientScreenChangedListener = () => {
+            this.event(`clientScreenChangedListener`)
+            if(workspace.activeClient === null){
+                this.doLog(LogLevel.WARNING, `clientScreenChangedListener: workspace.activeClient is null`);
+                return;
+            }
+            this.retileOther(workspace.activeClient)
+        }
 
         this.clientStepUserMovedResizedListener = (client: AbstractClient, geometry: QRect) => {
             this.event( `clientStepUserMovedResizedListener ${clientToString(client)}`)
@@ -92,7 +102,7 @@ export class Tiler{
             this.retileOther(client)
         });
 
-        // Listen for layout change on each screen's root tile (TODO: Handle new screen via screenChanged)
+        // Listen for layout change on each screen's root tile
         this.getAllScreensNumbers(0).forEach((screen: number) => {
             const tileManager = workspace.tilingForScreen(screen);
             if(tileManager === null){
@@ -142,6 +152,7 @@ export class Tiler{
         this.doLog(LogLevel.INFO, `> attachClient ${clientToString(client)}`);
         client.clientFinishUserMovedResized.connect(this.clientFinishUserMovedResizedListener);
         client.clientStepUserMovedResized.connect(this.clientStepUserMovedResizedListener);
+        client.screenChanged.connect(this.clientScreenChangedListener);
         this.tileClient(client, "attachClient");
     }
 
@@ -152,6 +163,7 @@ export class Tiler{
         this.doLog(LogLevel.INFO, `> detachClient ${clientToString(client)}`);
         client.clientFinishUserMovedResized.disconnect(this.clientFinishUserMovedResizedListener);
         client.clientStepUserMovedResized.disconnect(this.clientStepUserMovedResizedListener);
+        client.screenChanged.disconnect(this.clientScreenChangedListener);
 
         client.tile = null;
         this.retileOther(client);

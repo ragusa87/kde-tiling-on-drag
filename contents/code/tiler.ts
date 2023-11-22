@@ -445,7 +445,7 @@ export class Tiler{
                 }
 
                 // As the tile is used by more than one client, move one of them to a free tile on another screen.
-                if(otherClientsOnTile.length > 1 && freeTilesOverall.length > 0) {
+                if(this.config.rearrangeBetweenMonitors && otherClientsOnTile.length > 1 && freeTilesOverall.length > 0) {
                     this.doLog(LogLevel.DEBUG, `Move one client to a free tile on another screen`);
                     let oneClient = otherClientsOnTile.pop();
                     if(oneClient === client){

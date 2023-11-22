@@ -16,6 +16,12 @@ export class Config {
         this.doShowOutline = value;
         return this;
     }
+
+    setRearrangeBetweenMonitors(value: boolean) {
+        this.rearrangeBetweenMonitors = value
+        return this;
+    }
+
     logLevel: LogLevel;
     logMaximize: boolean;
     logEvents: boolean;
@@ -25,4 +31,5 @@ export class Config {
     doMaximizeSingleWindow: boolean = true;
     doMaximizeWhenNoLayoutExists: boolean = true;
     doShowOutline: boolean = true;
+    rearrangeBetweenMonitors: boolean = false;
 }

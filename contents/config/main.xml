@@ -14,6 +14,9 @@
         <entry name="showOutline" type="bool">
             <default>true</default>
         </entry>
+        <entry name="rearrangeBetweenMonitors" type="bool">
+            <default>false</default>
+        </entry>
     </group>
 
 </kcfg>

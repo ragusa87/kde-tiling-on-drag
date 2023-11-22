@@ -6,6 +6,7 @@ const config = new Config(isDebug);
 config
     .setLogWindowProperties(readConfig("logWindowProperties", false))
     .setShowOutline(readConfig("showOutline", true))
+    .setRearrangeBetweenMonitors(readConfig("rearrangeBetweenMonitors", false))
 
 console.log(`Tiling started with debug: ${isDebug}`)
 new Tiler(config);

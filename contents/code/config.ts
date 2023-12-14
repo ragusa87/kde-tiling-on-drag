@@ -1,5 +1,8 @@
 import {LogLevel} from "./logLevel";
 export class Config {
+    set setForceRedraw(value: boolean) {
+        this.doForceRedraw = value;
+    }
     constructor(debug: boolean = false) {
         this.logLevel = debug ? LogLevel.DEBUG: LogLevel.NOTICE;
         this.logMaximize = debug
@@ -32,4 +35,5 @@ export class Config {
     doMaximizeWhenNoLayoutExists: boolean = true;
     doShowOutline: boolean = true;
     rearrangeBetweenMonitors: boolean = false;
+    doForceRedraw: boolean = true;
 }

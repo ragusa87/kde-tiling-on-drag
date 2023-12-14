@@ -45,27 +45,34 @@
     </widget>
    </item>
    <item row="3" column="0">
+    <widget class="QCheckBox" name="kcfg_rearrangeWindows">
+     <property name="text">
+      <string>Rearrange Windows</string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="0">
     <widget class="QCheckBox" name="kcfg_rearrangeBetweenMonitors">
      <property name="text">
       <string>Rearrange windows between monitors</string>
      </property>
     </widget>
    </item>
-   <item row="4" column="0">
+   <item row="5" column="0">
     <widget class="QCheckBox" name="kcfg_forceRedraw">
      <property name="text">
       <string>Force redraw window</string>
      </property>
     </widget>
    </item>
-   <item row="5" column="0">
+   <item row="6" column="0">
     <widget class="QCheckBox" name="kcfg_maximizeSingleWindow">
      <property name="text">
       <string>Maximize single window</string>
      </property>
     </widget>
    </item>
-   <item row="6" column="0">
+   <item row="7" column="0">
     <widget class="QLabel" name="label" >
      <property name="text">
       <string>Changes apply only after disabling and re-enabling the script!</string>

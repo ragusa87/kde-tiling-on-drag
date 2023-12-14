@@ -30,6 +30,11 @@ export class Config {
         return this;
     }
 
+    setRearrangeWindows(value: boolean):Config{
+        this.doRearrangeWindows = value;
+        return this;
+    }
+
     logLevel: LogLevel;
     logMaximize: boolean;
     logEvents: boolean;
@@ -41,4 +46,5 @@ export class Config {
     doShowOutline: boolean = true;
     rearrangeBetweenMonitors: boolean = false;
     doForceRedraw: boolean = true;
+    doRearrangeWindows: boolean = true;
 }

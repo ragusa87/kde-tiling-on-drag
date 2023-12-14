@@ -7,6 +7,7 @@ config
     .setLogWindowProperties(readConfig("logWindowProperties", false))
     .setShowOutline(readConfig("showOutline", true))
     .setRearrangeBetweenMonitors(readConfig("rearrangeBetweenMonitors", false))
+    .setMaximizeSingleWindow(readConfig("maximizeSingleWindow", true))
 
 console.log(`Tiling started with debug: ${isDebug}`)
 new Tiler(config);

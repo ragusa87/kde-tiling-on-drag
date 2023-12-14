@@ -339,7 +339,9 @@ export class Tiler{
             // Ignore jetbrains's "Splash screen"
             !(client.resourceClass.includes("jetbrains") && client.caption === "splash") &&
             // Ignore "Steam apps"
-            !(client.resourceClass.startsWith("steam_app_"))
+            !(client.resourceClass.startsWith("steam_app_")) &&
+            // Ignore ktorrent
+            !(client.resourceClass.startsWith("org.kde.ktorrent"))
     }
 
     /**
@@ -639,7 +641,7 @@ export class Tiler{
     }
 
     private forceRedraw(tile: Tile|null) {
-        if(tile === null) {
+        if(tile === null || !this.config.doForceRedraw) {
             return;
         }
         tile.padding += 1;

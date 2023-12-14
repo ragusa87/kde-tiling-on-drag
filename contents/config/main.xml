@@ -17,6 +17,9 @@
         <entry name="rearrangeBetweenMonitors" type="bool">
             <default>false</default>
         </entry>
+        <entry name="forceRedraw" type="bool">
+            <default>true</default>
+        </entry>
     </group>
 
 </kcfg>

@@ -370,6 +370,10 @@ export class Tiler{
      */
     private retileOther(client: AbstractClient) {
         if(!this.config.doRearrangeWindows){
+            // Minimize/maximize all windows on the screen
+            this.getAllScreensNumbers(client.screen).forEach((screen: number) => {
+                this.handleMaximizeMinimize(screen, `finished retileOther: Screen: ${screen}`);
+            });
             return;
         }
         this.doLog(LogLevel.DEBUG, `re-tile other windows due to change on ${clientToString(client)}. Screen: ${client.screen}`);

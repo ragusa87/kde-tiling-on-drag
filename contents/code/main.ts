@@ -8,6 +8,7 @@ config
     .setShowOutline(readConfig("showOutline", true))
     .setRearrangeBetweenMonitors(readConfig("rearrangeBetweenMonitors", false))
     .setMaximizeSingleWindow(readConfig("maximizeSingleWindow", true))
+    .setRearrangeWindows(readConfig("rearrangeWindows", true))
 
 console.log(`Tiling started with debug: ${isDebug}`)
 new Tiler(config);

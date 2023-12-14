@@ -23,6 +23,9 @@
         <entry name="maximizeSingleWindow" type="bool">
             <default>true</default>
         </entry>
+        <entry name="rearrangeWindows" type="bool">
+            <default>true</default>
+        </entry>
     </group>
 
 </kcfg>

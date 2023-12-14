@@ -369,6 +369,9 @@ export class Tiler{
      * Re-tile other windows (so they can fit a better position due to the change of the given client)
      */
     private retileOther(client: AbstractClient) {
+        if(!this.config.doRearrangeWindows){
+            return;
+        }
         this.doLog(LogLevel.DEBUG, `re-tile other windows due to change on ${clientToString(client)}. Screen: ${client.screen}`);
 
         const justRetiled: AbstractClient[] = [];

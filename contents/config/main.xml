@@ -20,6 +20,9 @@
         <entry name="forceRedraw" type="bool">
             <default>true</default>
         </entry>
+        <entry name="maximizeSingleWindow" type="bool">
+            <default>true</default>
+        </entry>
     </group>
 
 </kcfg>

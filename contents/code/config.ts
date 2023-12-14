@@ -20,8 +20,13 @@ export class Config {
         return this;
     }
 
-    setRearrangeBetweenMonitors(value: boolean) {
+    setRearrangeBetweenMonitors(value: boolean):Config {
         this.rearrangeBetweenMonitors = value
+        return this;
+    }
+
+    setMaximizeSingleWindow(value: boolean):Config{
+        this.doMaximizeSingleWindow = value;
         return this;
     }
 

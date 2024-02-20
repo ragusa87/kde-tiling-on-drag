@@ -18,9 +18,9 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies such as 7zip, plasma-framework etc
-        uses: tecolicom/actions-use-apt-tools@v1
+        uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          tools: p7zip-full make plasma-framework jq
+          packages: p7zip-full make plasma-framework jq
 
       - name: Checkout code
         uses: actions/checkout@v2

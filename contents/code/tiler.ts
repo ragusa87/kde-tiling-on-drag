@@ -3,9 +3,11 @@ import {LogLevel} from "./logLevel";
 import {log} from "./logger";
 import {clientProperties, clientToString, tileToString} from "./clientHelper";
 import {cancelTimeout, setTimeout} from "./timeout";
+import {ShortcutManager} from "./shortcuts";
 
 export class Tiler{
     config: Config;
+    shortcuts: ShortcutManager;
     clientFinishUserMovedResizedListener: (client: AbstractClient) => void;
     clientStepUserMovedResizedListener: (client: AbstractClient, geometry: QRect) => void;
     private timer: QTimerInterface|null = null;
@@ -13,6 +15,9 @@ export class Tiler{
     isMoving: boolean = false; // True if the user is moving a window (set by clientStepUserMovedResizedListener/clientFinishUserMovedResizedListener)
     constructor(config: Config){
         this.config = config;
+
+        this.shortcuts = new ShortcutManager();
+        this.shortcuts.apply()
 
         this.clientFinishUserMovedResizedListener = (client: AbstractClient) => {
             this.event( `clientFinishUserMovedResized ${clientToString(client)}`)

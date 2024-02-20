@@ -9,10 +9,12 @@ import {
     tileToString
 } from "./clientHelper";
 import {cancelTimeout, setTimeout} from "./timeout";
+import {ShortcutManager} from "./shortcuts";
 
 export class Tiler{
     config: Config;
     logger: Console;
+    shortcuts: ShortcutManager;
     clientFinishUserMovedResizedListener: (client: AbstractClient) => void;
     clientStepUserMovedResizedListener: (client: AbstractClient, geometry: QRect) => void;
     private timer: QTimerInterface|null = null;
@@ -22,6 +24,8 @@ export class Tiler{
         this.config = config;
 
         this.logger = new Console(LogLevel.DEBUG)
+        this.shortcuts = new ShortcutManager();
+        this.shortcuts.apply()
 
         this.clientFinishUserMovedResizedListener = (client: AbstractClient) => {
             this.event( `clientFinishUserMovedResized ${clientToString(client)}`)
@@ -150,8 +154,7 @@ export class Tiler{
      * Filter client to be on the same activity and desktop
      */
     private isSameActivityAndDesktop(client: AbstractClient): boolean{
-        return (client.onAllDesktops || client.desktop === workspace.currentDesktop) &&
-            (client.activities.length === 0 || client.activities.includes(workspace.currentActivity));
+        return isSameActivityAndDesktop(client);
     }
 
     /**
@@ -333,21 +336,7 @@ export class Tiler{
      * We ignore splash screen, dialogs, etc.
      */
     private isSupportedClient(client: AbstractClient){
-        return client.normalWindow && !client.deleted &&
-            // Ignore Konsole's confirm dialogs
-            !(client.caption.startsWith("Confirm ") && client.resourceClass === "org.kde.konsole") &&
-            // Ignore Spectacle's dialogs
-            !(client.resourceClass === "org.kde.spectacle") &&
-            // Ignore Klipper's "Action Popup menu"
-            !(client.resourceClass === "org.kde.plasmashell" && client.caption === "Plasma") &&
-            // Ignore jetbrains's "Splash screen"
-            !(client.resourceClass.includes("jetbrains") && client.caption === "splash") &&
-            // Ignore "Steam apps"
-            !(client.resourceClass.startsWith("steam_app_")) &&
-            // Ignore ktorrent
-            !(client.resourceClass.startsWith("org.kde.ktorrent")) &&
-            // Ignore Eclipse windows
-            !(client.resourceClass.startsWith("Eclipse"))
+       return isSupportedClient(client);
     }
 
     /**

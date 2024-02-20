@@ -319,6 +319,7 @@ declare interface WorkspaceWrapper {
     hideOutline(): void;
     showOutline(geometry: QRect): void;
     showOutline(x: number,  y:number,  width:number,  height:number): void;
+    sendClientToScreen(client: AbstractClient, screen: number): void;
     slotWindowMaximize: () => void
 
     // signals

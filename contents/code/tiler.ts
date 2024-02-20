@@ -1,7 +1,13 @@
 import {Config} from "./config";
 import {LogLevel} from "./logLevel";
 import {log} from "./logger";
-import {clientProperties, clientToString, tileToString} from "./clientHelper";
+import {
+    clientProperties,
+    clientToString,
+    isSameActivityAndDesktop,
+    isSupportedClient,
+    tileToString
+} from "./clientHelper";
 import {cancelTimeout, setTimeout} from "./timeout";
 import {ShortcutManager} from "./shortcuts";
 
@@ -16,7 +22,7 @@ export class Tiler{
     constructor(config: Config){
         this.config = config;
 
-        this.shortcuts = new ShortcutManager();
+        this.shortcuts = new ShortcutManager(this);
         this.shortcuts.apply()
 
         this.clientFinishUserMovedResizedListener = (client: AbstractClient) => {
@@ -146,8 +152,7 @@ export class Tiler{
      * Filter client to be on the same activity and desktop
      */
     private isSameActivityAndDesktop(client: AbstractClient): boolean{
-        return (client.onAllDesktops || client.desktop === workspace.currentDesktop) &&
-            (client.activities.length === 0 || client.activities.includes(workspace.currentActivity));
+        return isSameActivityAndDesktop(client);
     }
 
     /**
@@ -334,21 +339,7 @@ export class Tiler{
      * We ignore splash screen, dialogs, etc.
      */
     private isSupportedClient(client: AbstractClient){
-        return client.normalWindow && !client.deleted &&
-            // Ignore Konsole's confirm dialogs
-            !(client.caption.startsWith("Confirm ") && client.resourceClass === "org.kde.konsole") &&
-            // Ignore Spectacle's dialogs
-            !(client.resourceClass === "org.kde.spectacle") &&
-            // Ignore Klipper's "Action Popup menu"
-            !(client.resourceClass === "org.kde.plasmashell" && client.caption === "Plasma") &&
-            // Ignore jetbrains's "Splash screen"
-            !(client.resourceClass.includes("jetbrains") && client.caption === "splash") &&
-            // Ignore "Steam apps"
-            !(client.resourceClass.startsWith("steam_app_")) &&
-            // Ignore ktorrent
-            !(client.resourceClass.startsWith("org.kde.ktorrent")) &&
-            // Ignore Eclipse windows
-            !(client.resourceClass.startsWith("Eclipse"))
+       return isSupportedClient(client);
     }
 
     /**
@@ -658,6 +649,7 @@ export class Tiler{
         if(tile === null || !this.config.doForceRedraw) {
             return;
         }
+        this.doLog(LogLevel.DEBUG, `Force redraw for ${tile.toString()}`);
         tile.padding += 1;
         tile.padding -= 1;
     }

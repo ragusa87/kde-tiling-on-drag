@@ -13,6 +13,30 @@ export function tileToString(tile: Tile|undefined|null):string{
 }
 
 
+export function isSupportedClient(client: AbstractClient):boolean{
+    return client.normalWindow && !client.deleted &&
+        // Ignore Konsole's confirm dialogs
+        !(client.caption.startsWith("Confirm ") && client.resourceClass === "org.kde.konsole") &&
+        // Ignore Spectacle's dialogs
+        !(client.resourceClass === "org.kde.spectacle") &&
+        // Ignore Klipper's "Action Popup menu"
+        !(client.resourceClass === "org.kde.plasmashell" && client.caption === "Plasma") &&
+        // Ignore jetbrains's "Splash screen"
+        !(client.resourceClass.includes("jetbrains") && client.caption === "splash") &&
+        // Ignore "Steam apps"
+        !(client.resourceClass.startsWith("steam_app_")) &&
+        // Ignore ktorrent
+        !(client.resourceClass.startsWith("org.kde.ktorrent")) &&
+        // Ignore Eclipse windows
+        !(client.resourceClass.startsWith("Eclipse"))
+}
+
+export function isSameActivityAndDesktop(client: AbstractClient):boolean{
+    return (client.onAllDesktops || client.desktop === workspace.currentDesktop) &&
+        (client.activities.length === 0 || client.activities.includes(workspace.currentActivity));
+}
+
+
 export function clientProperties (client: AbstractClient):string{
        return `> properties for ${clientToString(client)}
                 normalWindow? ${client.normalWindow}

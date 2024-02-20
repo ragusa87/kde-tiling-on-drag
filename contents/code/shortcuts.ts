@@ -1,4 +1,4 @@
-import {clientToString} from "./clientHelper";
+import {clientToString, isSameActivityAndDesktop, isSupportedClient} from "./clientHelper";
 
 export class Point implements QPoint {
     x: number;
@@ -14,8 +14,8 @@ export class Point implements QPoint {
 
 const point = (x: number, y: number): QPoint => new Point(x, y);
 enum Direction {
-    Above = "Above",
-    Below = "Below",
+    Up = "Up",
+    Down = "Down",
     Left = "Left",
     Right = "Right",
 }
@@ -35,44 +35,32 @@ class Shortcuts{
 
 export class ShortcutManager{
     private shortcuts: Map<string, Shortcuts> = new Map<string, Shortcuts>();
-
     public constructor(){
-        this.addShortcut(new Shortcuts("ApiTilingFocusRight", "ApiTiling: Focus Right", "Meta+Right", () => {
-            this.focusClientInDirection(Direction.Right);
-        }));
-        this.addShortcut(new Shortcuts("ApiTilingFocusAbove", "ApiTiling: Focus Above", "Meta+Up", () => {
-            this.focusClientInDirection(Direction.Above);
-        }));
-        this.addShortcut(new Shortcuts("ApiTilingFocusBelow", "ApiTiling: Focus Below", "Meta+Down", () => {
-            this.focusClientInDirection(Direction.Below);
-        }));
-        this.addShortcut(new Shortcuts("ApiTilingFocusLeft", "ApiTiling: Focus Left", "Meta+Left", () => {
-            this.focusClientInDirection(Direction.Left);
-        }));
-
-        this.addShortcut(new Shortcuts("ApiTilingMoveRight", "ApiTiling: Move Right", "Meta+Shift+Right", () => {
-            this.moveClientInDirection(Direction.Right);
-        }));
-        this.addShortcut(new Shortcuts("ApiTilingMoveAbove", "ApiTiling: Move Above", "Meta+Shift+Up", () => {
-            this.moveClientInDirection(Direction.Above);
-        }));
-        this.addShortcut(new Shortcuts("ApiTilingMoveBelow", "ApiTiling: Move Below", "Meta+Shift+Down", () => {
-            this.moveClientInDirection(Direction.Below);
-        }));
-        this.addShortcut(new Shortcuts("ApiTilingMoveLeft", "ApiTiling: Move Left", "Meta+Shift+Left", () => {
-            this.moveClientInDirection(Direction.Left);
-        }));
+        for(const directionKey of (Object.keys(Direction) as (keyof typeof Direction)[])){
+            const direction = Direction[directionKey]
+            this.addShortcut(new Shortcuts("ApiTilingFocus" + direction, "ApiTiling: Focus window on " + direction, "Meta+" + direction, () => {
+                this.focusClientInDirection(direction);
+            }));
+            this.addShortcut(new Shortcuts("ApiTilingMove" + direction, "ApiTiling: Move window to " + direction, "Meta+Shift+" + direction, () => {
+                this.moveClientInDirection(direction);
+            }));
+        }
     }
 
     protected focusClientInDirection(direction: Direction){
-        console.log("Focus to " + direction.toString());
+        console.error("Focus to " + direction.toString() + " screen " + workspace.activeScreen)
 
-        const client = this.getClientInDirection(direction);
-        if(client === null){
-            console.log("No client in direction " + direction)
+        const clients = this.getClientsInDirection(direction);
+        if(clients.length === 0){
+            console.log("No clients in direction " + direction)
             return;
         }
-        console.log("Focusing.. " + clientToString(client))
+        const client = clients.pop();
+        if(client === undefined){
+            console.warn("No client found in direction " + direction)
+            return;
+        }
+        console.log("Focusing.. " + clientToString(client)+ ". Alternative clients: " + clients.map((client: AbstractClient) => clientToString(client)).join(", "))
 
         workspace.activeClient = client
     }
@@ -81,15 +69,27 @@ export class ShortcutManager{
         return workspace.activeClient;
     }
 
-    public getClientInDirection(direction: Direction): AbstractClient|null{
-        const tile = this.getTileInDirection(direction);
-        if(tile === null){
-            return null;
-        }
-        // TODO Consider ignored windows
-        return tile.windows[0] ?? null;
+    public getClientsInDirection(direction: Direction): AbstractClient[]{
+        const tiles = this.getTilesInDirection(direction);
+        const clients: AbstractClient[] = [];
+        tiles.forEach((tile: Tile) => {
+            clients.push(...tile.windows.filter((client: AbstractClient) => isSupportedClient(client) && this.isSameActivityAndDesktop(client) && client !== this.getActiveClient()));
+        });
+
+        // Push non-tiled clients
+        workspace.clientList().forEach((client: AbstractClient) => {
+            if(isSupportedClient(client) && this.isSameActivityAndDesktop(client) && client.tile === null){
+                clients.push(client);
+            }
+        });
+
+        return clients.filter((client: AbstractClient) => client !== this.getActiveClient()) ?? [];
     }
 
+
+    protected isSameActivityAndDesktop = function (client: AbstractClient):boolean {
+        return isSameActivityAndDesktop(client);
+    };
     protected swapClient(client1: AbstractClient, client2: AbstractClient){
         if(client1 === client2){
             console.debug("Clients are the same, no need to swap them")
@@ -102,30 +102,58 @@ export class ShortcutManager{
     }
 
 
-    public getTileInDirection(direction: Direction): Tile|null {
+    public getTilesInDirection(direction: Direction, useAlternatives: boolean = true): Tile[] {
         const activeClient = this.getActiveClient();
         if (activeClient === null) {
             console.warn("No active client")
-            return null;
+            return [];
         }
         const point = this.getPointInDirection(direction);
         if (point === null) {
             console.warn("No point on the direction " + direction + " of active client")
-            return null;
+            return [];
         }
 
         console.debug("Active client: " + activeClient.resourceClass +" " + activeClient.geometry.toString())
         console.debug("Point: " + point.toString())
+        console.debug("Tile: " + activeClient.tile?.toString())
 
 
-        const tile = workspace.tilingForScreen(activeClient.screen).bestTileForPosition(point.x, point.y);
-        if (tile === null) {
-            console.warn("No tile on the direction " + direction + " of active client")
-            return null;
+        const tile = workspace.tilingForScreen( activeClient.screen).bestTileForPosition(point.x, point.y);
+        let response = tile !== null && tile !== activeClient.tile ? [tile] : [];
+        if(useAlternatives) {
+            response.push(...this.getBestTilesFromAnotherScreen(direction))
+            response = response.filter((tile: Tile) => tile !== activeClient.tile);
+        }
+        console.debug("Tiles in direction " + direction + " : " + response.map((tile: Tile) => tile.toString()).join(", "))
+        return response;
+    }
+
+    protected getScreensInDirection(direction: Direction): {screen: number}[]{
+        console.debug("Finding tile in another screen for direction : " + direction);
+        for(let i = 0; i < workspace.numScreens; i++) {
+            const geometry = workspace.clientArea(KWin.MaximizeArea, i, this.getActiveClient()?.desktop ?? 0)
+            console.log("Screen " + i + " > " + geometry.toString())
         }
 
-        console.log("Tile found: " + tile.toString())
-        return tile;
+        const point = this.getPointInDirection(direction)
+        if(point === null){
+            console.warn("No point on the direction " + direction)
+            return [];
+        }
+
+        const response = [];
+        for(let i = 0; i < workspace.numScreens; i++){
+            // Skip active screen
+            if(workspace.activeScreen === i){
+                continue;
+            }
+
+            if(workspace.activeClient !== null && this.geometryContains(i, workspace.activeClient, direction)) {
+                response.push({screen: i});
+            }
+        }
+        return response;
     }
 
     protected getPointInDirection(direction: Direction): QPoint | null{
@@ -139,9 +167,9 @@ export class ShortcutManager{
 
         const increment = 10; // TODO Use padding as increment ?
         switch (direction) {
-            case Direction.Above:
+            case Direction.Up:
                 return point(geometry.x , geometry.y - increment);
-            case Direction.Below:
+            case Direction.Down:
                 return point(geometry.x, geometry.y + geometry.height + increment);
             case Direction.Left:
                 return point(geometry.x - increment, geometry.y);
@@ -177,17 +205,47 @@ export class ShortcutManager{
     private moveClientInDirection(direction: Direction) {
         const activeClient = this.getActiveClient();
         if(activeClient === null){
-            console.warn("No active client")
+            console.error("No active client")
             return;
         }
 
-        const tile = this.getTileInDirection(direction);
-        if(tile === null){
-            console.warn("No tile in direction " + direction)
+        console.error("Move " + clientToString(activeClient) + " to " + direction.toString() + " - screen " + workspace.activeScreen);
+
+        const tiles = this.getTilesInDirection(direction, false);
+        if(tiles.length  === 0){
+            console.debug("No tiles in direction " + direction + " try to send to another screen")
+            for(let i = 0; i < workspace.numScreens; i++) {
+                if(i === activeClient.screen){
+                    continue
+                }
+                if(this.geometryContains(i, activeClient, direction)){
+                    console.warn("Moving client " + clientToString(activeClient) +" to screen " + i)
+                    //activeClient.tile = null;
+                    workspace.sendClientToScreen(activeClient, i);
+                    return;
+                }
+            }
+            console.warn("No screen found in direction " + direction)
+
+            switch (direction) {
+                case Direction.Up:
+                    activeClient.tile = null;
+                    activeClient.setMaximize(true,true);
+                    break
+                case Direction.Down:
+                    activeClient.tile = null;
+                    activeClient.setMaximize(false,false);
+                    break;
+
+            }
+
+            //console.warn("No screen found in direction " + direction + " .. spliting..")
+            //activeClient.tile?.split(direction === Direction.Left || direction === Direction.Right ? LayoutDirection.Horizontal : LayoutDirection.Vertical);
             return;
         }
 
-        const windows = tile.windows.filter((client: AbstractClient) => client !== activeClient);
+        const tile = tiles[0];
+        const windows = tile.windows.filter((client: AbstractClient) => client !== activeClient).filter((client: AbstractClient) => isSupportedClient(client) && this.isSameActivityAndDesktop(client));
         if(windows.length > 0) {
             this.swapClient(activeClient, windows[0]);
             return;
@@ -195,5 +253,59 @@ export class ShortcutManager{
 
         console.log("Moving client " + clientToString(activeClient) + " to " + tile.toString())
         activeClient.tile = tile;
+        tile.windows.push(activeClient);
+
+    }
+
+    private geometryContains(screenNumber: number, client: AbstractClient, direction: Direction) : boolean {
+        const screenClientArea = workspace.clientArea(KWin.MaximizeArea, client.screen, client.desktop)
+        const screenNumberArea = workspace.clientArea(KWin.MaximizeArea, screenNumber, client.desktop)
+        console.log("Checking if screen " + screenNumber + " is on " + direction + " from screen " + client.screen + " : " + screenNumberArea.toString() + " -> " + screenClientArea.toString());
+        let response = false;
+        switch (direction) {
+            case Direction.Up:
+                response = screenClientArea.y > screenNumberArea.y;
+                break;
+            case Direction.Down:
+                response = screenClientArea.y < screenNumberArea.y;
+                break;
+            case Direction.Left:
+                response = screenClientArea.x >= screenNumberArea.x + screenNumberArea.width;
+                break;
+            case Direction.Right:
+                response = screenClientArea.x <= screenNumberArea.x;
+                break;
+        }
+        console.log("Screen " + screenNumber + " " + (response ? "match" : "doesn't match") +" direction " + direction)
+        return response;
+    }
+
+
+
+    private getBestTilesFromAnotherScreen(direction: Direction): Tile[] {
+        const screenInfos = this.getScreensInDirection(direction);
+        if(screenInfos.length == 0){
+            console.warn("No screen in direction " + direction)
+            return [];
+        }
+        console.debug(screenInfos.length + " screen(s) in direction " + direction)
+        const response: Tile[] = [];
+
+        screenInfos.forEach((screenInfo) => {
+            const geometry = workspace.clientArea(KWin.MaximizeArea, screenInfo.screen, this.getActiveClient()?.desktop ?? 0)
+            const tile = workspace.tilingForScreen(screenInfo.screen).bestTileForPosition(geometry.x, geometry.y)
+            if(tile !== null){
+                console.log("Tile found in screen " + screenInfo.screen + " " + tile.toString())
+                response.push(tile);
+            }
+
+            const alternatives = workspace.tilingForScreen(screenInfo.screen).rootTile?.tiles.filter((tile: Tile) => tile !== null).filter((tile) => !response.includes(tile)) ?? [];
+            if(alternatives.length > 0) {
+                console.log("Alternative tiles found in screen " + screenInfo.screen + " : " + alternatives?.map((tile: Tile) => tile.toString()).join(", "))
+                response.push(...alternatives);
+            }
+        });
+
+        return response.filter((tile: Tile) => tile !== null);
     }
 }

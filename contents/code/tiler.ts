@@ -341,7 +341,9 @@ export class Tiler{
             // Ignore "Steam apps"
             !(client.resourceClass.startsWith("steam_app_")) &&
             // Ignore ktorrent
-            !(client.resourceClass.startsWith("org.kde.ktorrent"))
+            !(client.resourceClass.startsWith("org.kde.ktorrent")) &&
+            // Ignore Eclipse windows
+            !(client.resourceClass.startsWith("Eclipse"))
     }
 
     /**

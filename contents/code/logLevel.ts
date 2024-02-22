@@ -1,6 +1,7 @@
 export enum LogLevel
 {
     // Highest priority => the lowest number
+    // https://datatracker.ietf.org/doc/html/rfc5424
     EMERGENCY = 1 << 1,
     ALERT     = 1 << 2,
     CRITICAL  = 1 << 3,

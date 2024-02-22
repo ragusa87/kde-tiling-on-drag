@@ -1,11 +1,18 @@
 import {Config} from "./config";
 import {LogLevel} from "./logLevel";
-import {log} from "./logger";
-import {clientProperties, clientToString, tileToString} from "./clientHelper";
+import {Console} from "./logger";
+import {
+    clientProperties,
+    clientToString,
+    isSameActivityAndDesktop,
+    isSupportedClient,
+    tileToString
+} from "./clientHelper";
 import {cancelTimeout, setTimeout} from "./timeout";
 
 export class Tiler{
     config: Config;
+    logger: Console;
     clientFinishUserMovedResizedListener: (client: AbstractClient) => void;
     clientStepUserMovedResizedListener: (client: AbstractClient, geometry: QRect) => void;
     private timer: QTimerInterface|null = null;
@@ -13,6 +20,8 @@ export class Tiler{
     isMoving: boolean = false; // True if the user is moving a window (set by clientStepUserMovedResizedListener/clientFinishUserMovedResizedListener)
     constructor(config: Config){
         this.config = config;
+
+        this.logger = new Console(LogLevel.DEBUG)
 
         this.clientFinishUserMovedResizedListener = (client: AbstractClient) => {
             this.event( `clientFinishUserMovedResized ${clientToString(client)}`)
@@ -28,7 +37,7 @@ export class Tiler{
             }
             this.event(`clientScreenChangedListener`)
             if(workspace.activeClient === null){
-                this.doLog(LogLevel.WARNING, `clientScreenChangedListener: workspace.activeClient is null`);
+                this.logger.warn(`clientScreenChangedListener: workspace.activeClient is null`);
                 return;
             }
             this.retileOther(workspace.activeClient)
@@ -116,11 +125,11 @@ export class Tiler{
         this.getAllScreensNumbers(0).forEach((screen: number) => {
             const tileManager = workspace.tilingForScreen(screen);
             if(tileManager === null){
-                this.doLog(LogLevel.WARNING, `No tileManager for screen ${screen} ??`);
+                this.logger.warn(`No tileManager for screen ${screen} ??`);
                 return
             }
             if(tileManager.rootTile === null){
-                this.doLog(LogLevel.WARNING, `No root tile for screen ${screen} ??`);
+                this.logger.warn(`No root tile for screen ${screen} ??`);
                 return
             }
             workspace.tilingForScreen(screen).rootTile.layoutModified.connect(() => {
@@ -160,7 +169,7 @@ export class Tiler{
      * Add listeners and tile new client
      */
     private attachClient(client: AbstractClient){
-        this.doLog(LogLevel.INFO, `> attachClient ${clientToString(client)}`);
+        this.logger.info(`> attachClient ${clientToString(client)}`);
         client.clientFinishUserMovedResized.connect(this.clientFinishUserMovedResizedListener);
         client.clientStepUserMovedResized.connect(this.clientStepUserMovedResizedListener);
         client.screenChanged.connect(this.clientScreenChangedListener);
@@ -171,21 +180,13 @@ export class Tiler{
      * Remove listeners and re-tile other windows
      */
     private detachClient(client: AbstractClient){
-        this.doLog(LogLevel.INFO, `> detachClient ${clientToString(client)}`);
+        this.logger.info(`> detachClient ${clientToString(client)}`);
         client.clientFinishUserMovedResized.disconnect(this.clientFinishUserMovedResizedListener);
         client.clientStepUserMovedResized.disconnect(this.clientStepUserMovedResizedListener);
         client.screenChanged.disconnect(this.clientScreenChangedListener);
 
         client.tile = null;
         this.retileOther(client);
-    }
-
-    /* eslint-disable  @typescript-eslint/no-explicit-any */
-    private doLog(level: LogLevel, ...value: any){
-        if(level > this.config.logLevel){
-            return;
-        }
-        log(level, value)
     }
 
     /**
@@ -212,7 +213,7 @@ export class Tiler{
      */
     private tileClient(client: AbstractClient, reason: string = ""){
 
-        this.doLog(LogLevel.DEBUG, `> tileClient ${clientToString(client)} (${reason})`);
+        this.logger.debug(`> tileClient ${clientToString(client)} (${reason})`);
 
         this.doTile(client, "tileClient");
 
@@ -235,10 +236,10 @@ export class Tiler{
         // Ask where is the best location for this current window and assign it to the client.
         const bestTileForPosition = tileManager.bestTileForPosition(position.x, position.y);
         if(bestTileForPosition === null && this.config.doMaximizeWhenNoLayoutExists){
-            this.doLog(LogLevel.DEBUG, `No tile exists for ${clientToString(client)}, maximize it instead`);
+            this.logger.debug(`No tile exists for ${clientToString(client)}, maximize it instead`);
             client.geometry = workspace.clientArea(KWin.MaximizeArea, client.screen, client.desktop);
         }
-        this.doLog(LogLevel.INFO, `doTile: ${clientToString(client)} to ${bestTileForPosition?.toString()} (${reason}) screen ${client.screen}`);
+        this.logger.info(`doTile: ${clientToString(client)} to ${bestTileForPosition?.toString()} (${reason}) screen ${client.screen}`);
 
         client.tile = bestTileForPosition
     }
@@ -251,12 +252,12 @@ export class Tiler{
         screens.forEach((screen: number) => {
             const tileManager = workspace.tilingForScreen(screen);
             if(tileManager === null){
-                this.doLog(LogLevel.NOTICE, `no tileManager for screen ${screen} ??`);
+                this.logger.notice(`no tileManager for screen ${screen} ??`);
                 return []
             }
             const root = tileManager.rootTile;
             if(root === null){
-                this.doLog(LogLevel.NOTICE, `no root tile for screen ${screen} ??`);
+                this.logger.notice(`no root tile for screen ${screen} ??`);
                 return [];
             }
             const toHandle: Tile[] = [root];
@@ -309,7 +310,7 @@ export class Tiler{
     private getAllScreensNumbers(favoriteNumber: number): number[]{
         const screens: number[] = [];
         if(favoriteNumber < 0 || favoriteNumber > workspace.numScreens -1 ){
-            this.doLog(LogLevel.WARNING, `favoriteNumber is invalid: ${favoriteNumber} (numScreens: ${workspace.numScreens})`);
+            this.logger.warn(`favoriteNumber is invalid: ${favoriteNumber} (numScreens: ${workspace.numScreens})`);
         }
         screens.push(favoriteNumber);
 
@@ -318,7 +319,10 @@ export class Tiler{
                 screens.push(i);
             }
         }
-        this.doLogIf(this.config.logDebugScreens, LogLevel.DEBUG, `screens: ${screens.join(', ')} (favorite: ${favoriteNumber}, total: ${workspace.numScreens})`)
+        if(this.config.logDebugScreens){
+            this.logger.debug(`screens: ${screens.join(', ')} (favorite: ${favoriteNumber}, total: ${workspace.numScreens})`)
+
+        }
 
         return screens;
     }
@@ -361,7 +365,10 @@ export class Tiler{
      */
     private maximize(client: AbstractClient) {
 
-        this.doLogIf(this.config.logMaximize,LogLevel.INFO, `> maximize ${clientToString(client)} ${client.tile?.toString()}`);
+        if(this.config.logMaximize){
+            this.logger.info( `> maximize ${clientToString(client)} ${client.tile?.toString()}`);
+
+        }
 
         client.tile = null;
         client.geometry = workspace.clientArea(KWin.MaximizeArea, client.screen, client.desktop);
@@ -378,7 +385,7 @@ export class Tiler{
             });
             return;
         }
-        this.doLog(LogLevel.DEBUG, `re-tile other windows due to change on ${clientToString(client)}. Screen: ${client.screen}`);
+        this.logger.debug(`re-tile other windows due to change on ${clientToString(client)}. Screen: ${client.screen}`);
 
         const justRetiled: AbstractClient[] = [];
         // Tile all clients (this will un-maximize maximized window)
@@ -422,21 +429,21 @@ export class Tiler{
             const freeTileOnScreen = freeTileOnScreens.get(screen) ?? [];
             // Move stacked window to a free tile if any
             this.getAllTiles(screen).every((tile: Tile) => {
-                this.doLog(LogLevel.DEBUG, `re-tile other windows. \n\tScreen: ${screen}\n\ttile: ${tileToString(tile)}`);
+                this.logger.debug(`re-tile other windows. \n\tScreen: ${screen}\n\ttile: ${tileToString(tile)}`);
 
                 const otherClientsOnTile = this.getClientOnTile(tile);
                 // Re-tiled clients are not detected by getClientOnTile, so we need to add them manually.
                 // I don't know why Kwin does update the tile's windows list on the fly.
                 justRetiled.forEach((client: AbstractClient) => {
                      if(client.tile === tile){
-                        this.doLog(LogLevel.DEBUG, `Add ${clientToString(client)} to otherClientsOnTile`)
+                        this.logger.debug(`Add ${clientToString(client)} to otherClientsOnTile`)
                         otherClientsOnTile.push(client);
                     }
                  });
 
                 const untiledClientsOnScreen = this.getUntiledClientOnScreen(screen);
 
-                this.doLog(LogLevel.DEBUG, `re-tile other windows. \n\tScreen: ${screen}\n\ttile: ${tileToString(tile)}\n\totherClientsOnTile: ${otherClientsOnTile.length}\n\tuntiledClientsOnScreen: ${untiledClientsOnScreen.length}`);
+                this.logger.debug(`re-tile other windows. \n\tScreen: ${screen}\n\ttile: ${tileToString(tile)}\n\totherClientsOnTile: ${otherClientsOnTile.length}\n\tuntiledClientsOnScreen: ${untiledClientsOnScreen.length}`);
 
                 // As the tile is used by more than one client, move one of them to a free tile on the same screen.
                 if (otherClientsOnTile.length > 1 && freeTileOnScreen.length > 0) {
@@ -457,7 +464,7 @@ export class Tiler{
 
                 // As the tile is used by more than one client, move one of them to a free tile on another screen.
                 if(this.config.rearrangeBetweenMonitors && otherClientsOnTile.length > 1 && freeTilesOverall.length > 0) {
-                    this.doLog(LogLevel.DEBUG, `Move one client to a free tile on another screen`);
+                    this.logger.debug(`Move one client to a free tile on another screen`);
                     let oneClient = otherClientsOnTile.pop();
                     if(oneClient === client){
                         // The client that changed is on this tile, so we need to take another one
@@ -465,7 +472,7 @@ export class Tiler{
                     }
                     if(oneClient !== undefined) {
                         const oneTile = freeTilesOverall.shift() || null
-                        this.doLog(LogLevel.DEBUG, `Move ${clientToString(oneClient)} to ${oneTile}`)
+                        this.logger.debug(`Move ${clientToString(oneClient)} to ${oneTile}`)
                         oneClient.tile = oneTile;
                         this.forceRedraw(oneTile);
                         return false;
@@ -489,7 +496,7 @@ export class Tiler{
      */
     private tileScreen(screen: number,reason: string) {
         this.getUntiledClientOnScreen(screen).forEach((client: AbstractClient) => {
-            this.doLog(LogLevel.DEBUG, `re-tile ${clientToString(client)} for screen ${screen} - reorganization (${reason})`);
+            this.logger.debug(`re-tile ${clientToString(client)} for screen ${screen} - reorganization (${reason})`);
             this.doTile(client, reason);
         });
     }
@@ -511,7 +518,7 @@ export class Tiler{
      */
     private unmaximize(client: AbstractClient) {
         if(this.config.logMaximize){
-            this.doLog(LogLevel.INFO, `> un-maximize ${clientToString(client)} - ${client.tile?.toString()}`);
+            this.logger.info(`> un-maximize ${clientToString(client)} - ${client.tile?.toString()}`);
         }
 
         // Force a tile so unmaximize will work
@@ -555,7 +562,7 @@ export class Tiler{
                 })
             })
         });
-        this.doLog(LogLevel.DEBUG, output);
+        this.logger.debug(output);
     }
 
     /**
@@ -601,20 +608,20 @@ export class Tiler{
      * Move client to a free tile and return the used tile if any
      */
     private moveClientToFreeTile(client: AbstractClient, otherClientsOnTile: AbstractClient[], freeTileOnScreen: Tile[], reason: string): Tile|null {
-        this.doLog(LogLevel.DEBUG, `Move one client from tile to a free one (${reason}). Clients on tile:\n  ${otherClientsOnTile.map((client: AbstractClient) => `  - ${clientToString(client)}`).join("\n")}\nFree tiles : ${freeTileOnScreen.map((tile: Tile) => `- ${tile.toString()}`).join(", ")})}`);
+        this.logger.debug(`Move one client from tile to a free one (${reason}). Clients on tile:\n  ${otherClientsOnTile.map((client: AbstractClient) => `  - ${clientToString(client)}`).join("\n")}\nFree tiles : ${freeTileOnScreen.map((tile: Tile) => `- ${tile.toString()}`).join(", ")})}`);
         let clientToMove = otherClientsOnTile.pop();
         if (clientToMove === client) {
             clientToMove = otherClientsOnTile.pop();
             if(clientToMove === null){
-                this.doLog(LogLevel.DEBUG, `Do not move ${client} as it is being tiled. No other client to move to a free tile.`)
+                this.logger.debug(`Do not move ${client} as it is being tiled. No other client to move to a free tile.`)
                 return null;
             }
-            this.doLog(LogLevel.DEBUG, `Skip ${clientToString(client)} as it is the one that changed, use ${clientToString(clientToMove)} instead`)
+            this.logger.debug(`Skip ${clientToString(client)} as it is the one that changed, use ${clientToString(clientToMove)} instead`)
         }
         const freeTile = freeTileOnScreen[0] ?? null;
 
         if (clientToMove && freeTile) {
-            this.doLog(LogLevel.DEBUG, `Move ${clientToString(clientToMove)} from ${clientToMove.tile?.toString()} to ${freeTile.toString()}`);
+            this.logger.debug(`Move ${clientToString(clientToMove)} from ${clientToMove.tile?.toString()} to ${freeTile.toString()}`);
             clientToMove.tile = freeTile;
             this.forceRedraw(freeTile);
             return freeTile
@@ -629,7 +636,7 @@ export class Tiler{
         if(!enabled){
             return;
         }
-        this.doLog(level, message);
+        this.logger.log(level, message);
     }
 
     /**
@@ -653,6 +660,7 @@ export class Tiler{
         if(tile === null || !this.config.doForceRedraw) {
             return;
         }
+        this.logger.debug(`Force redraw for ${tile.toString()}`);
         tile.padding += 1;
         tile.padding -= 1;
     }

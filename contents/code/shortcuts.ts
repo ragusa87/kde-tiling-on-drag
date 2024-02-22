@@ -89,7 +89,7 @@ export class ShortcutManager{
             }
         });
 
-        return clients.filter((client: AbstractClient) => client !== this.getActiveClient()) ?? [];
+        return clients.filter((client: AbstractClient) => client !== this.getActiveClient() && !client.minimized) ?? [];
     }
 
 
@@ -248,7 +248,7 @@ export class ShortcutManager{
         }
 
         const tile = tiles[0];
-        const windows = tile.windows.filter((client: AbstractClient) => client !== activeClient).filter((client: AbstractClient) => isSupportedClient(client) && this.isSameActivityAndDesktop(client));
+        const windows = tile.windows.filter((client: AbstractClient) => client !== activeClient).filter((client: AbstractClient) => isSupportedClient(client) && this.isSameActivityAndDesktop(client) && !client.minimized);
         if(windows.length > 0) {
             this.swapClient(activeClient, windows[0]);
             return;

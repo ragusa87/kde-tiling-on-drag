@@ -22,5 +22,6 @@
 //     https://techbase.kde.org/Development/Tutorials/KWin/Scripting/API_4.9
 
 declare let readConfig: (key: string, defaultValue?: any) => any;
+declare let registerShortcut: (key: string, description: string, shortcut: string, callback: () => void) => void;
 
 

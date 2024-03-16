@@ -54,7 +54,7 @@ export class ShortcutManager{
     }
 
     protected focusClientInDirection(direction: Direction){
-        this.logger.error(`Focus to ${direction.toString()} on screen ${workspace.activeScreen}`)
+        this.logger.error(`Focus to ${direction.toString()} of ${clientToString(workspace.activeClient)} on screen ${workspace.activeScreen}`)
 
         const clients = this.getClientsInDirection(direction);
         if(clients.length === 0){
@@ -75,21 +75,60 @@ export class ShortcutManager{
         return workspace.activeClient;
     }
 
-    public getClientsInDirection(direction: Direction): AbstractClient[]{
-        const tiles = this.getTilesInDirection(direction);
-        const clients: AbstractClient[] = [];
-        tiles.forEach((tile: Tile) => {
-            clients.push(...tile.windows.filter((client: AbstractClient) => isSupportedClient(client) && this.isSameActivityAndDesktop(client) && client !== this.getActiveClient()));
-        });
+    public getClientsInDirection(direction: Direction, screenNumber: number|undefined = undefined, geometry: QRect|undefined = undefined, attempts: number = 0): AbstractClient[]{
+        screenNumber = screenNumber ?? workspace.activeScreen;
+        geometry = geometry ?? this.getActiveClient()?.geometry
+        const clients = workspace.clientList()
+            .filter(isSupportedClient)
+            .filter(client => client.screen === screenNumber)
+            .filter(isSameActivityAndDesktop)
+            .filter((client: AbstractClient) => client !== this.getActiveClient() && !client.minimized)
+            .filter((client: AbstractClient) => {
+                const x =  geometry?.x
+                const y =  geometry?.y
 
-        // Push non-tiled clients
-        workspace.clientList().forEach((client: AbstractClient) => {
-            if(isSupportedClient(client) && this.isSameActivityAndDesktop(client) && client.tile === null){
-                clients.push(client);
-            }
-        });
+                if(y === undefined || x === undefined) {
+                    return false;
+                }
 
-        return clients.filter((client: AbstractClient) => client !== this.getActiveClient() && !client.minimized) ?? [];
+                return (direction === Direction.Up && client.geometry.y < y)
+                    || (direction === Direction.Down && client.geometry.y > y)
+                    || (direction === Direction.Left && client.geometry.x < x)
+                    || (direction === Direction.Right && client.geometry.x > x)
+
+
+            });
+
+        function nextTo(clients: AbstractClient[], compareFn: (client1: AbstractClient, client2: AbstractClient) => number) {
+            return clients.sort(compareFn).reverse().shift(); // As we sort by direction, we want the closest element, not the farthest, so we reverse the array
+        }
+
+        let client: AbstractClient | undefined;
+        switch (direction) {
+            case Direction.Up:
+                client = nextTo(clients, (client1: AbstractClient, client2: AbstractClient) => client1.geometry.y - client2.geometry.y);
+                break;
+            case Direction.Down:
+                client = nextTo(clients, (client1: AbstractClient, client2: AbstractClient) => client2.geometry.y - client1.geometry.y);
+                break;
+            case Direction.Left:
+                client = nextTo(clients, (client1: AbstractClient, client2: AbstractClient) => client1.geometry.x - client2.geometry.x);
+                break;
+            case Direction.Right:
+                client = nextTo(clients, (client1: AbstractClient, client2: AbstractClient) => client2.geometry.x - client1.geometry.x);
+                break;
+        }
+
+        console.log("client on direction " + direction)
+
+        // Find client in another screen
+        if(client === undefined && (workspace.numScreens > 1 || workspace.clientList().length > 1) && attempts < 2) {
+            const nextScreen = (workspace.activeScreen + 1) % workspace.numScreens;
+            const rect = workspace.clientArea(KWin.MaximizeArea, nextScreen, this.getActiveClient()?.desktop ?? 0)
+            return this.getClientsInDirection(direction, nextScreen, rect, ++attempts);
+        }
+
+        return client ? [client] : [];
     }
 
 

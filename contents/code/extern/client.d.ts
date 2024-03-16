@@ -320,7 +320,12 @@ declare interface WorkspaceWrapper {
     showOutline(geometry: QRect): void;
     showOutline(x: number,  y:number,  width:number,  height:number): void;
     sendClientToScreen(client: AbstractClient, screen: number): void;
+    screenAt(point: QPoint): number|undefined;
     slotWindowMaximize: () => void
+    slotWindowQuickTileLeft: () => void;
+    slotWindowQuickTileRight: () => void;
+    slotWindowQuickTileTop: () => void;
+    slotWindowQuickTileBottom: () => void;
 
     // signals
     clientAdded: Signal<(client: AbstractClient) => void>;

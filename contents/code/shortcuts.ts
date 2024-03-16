@@ -123,7 +123,7 @@ export class ShortcutManager{
 
         // Find client in another screen
         if(client === undefined && (workspace.numScreens > 1 || workspace.clientList().length > 1) && attempts < 2) {
-            const nextScreen = (workspace.activeScreen + 1) % workspace.numScreens;
+            const nextScreen = this.getScreenNumberInDirection(direction);
             const rect = workspace.clientArea(KWin.MaximizeArea, nextScreen, this.getActiveClient()?.desktop ?? 0)
             return this.getClientsInDirection(direction, nextScreen, rect, ++attempts);
         }
@@ -275,13 +275,20 @@ export class ShortcutManager{
             switch (direction) {
                 case Direction.Up:
                     activeClient.tile = null;
-                    activeClient.setMaximize(true,true);
+                    workspace.slotWindowQuickTileTop()
                     break
                 case Direction.Down:
                     activeClient.tile = null;
-                    activeClient.setMaximize(false,false);
+                    workspace.slotWindowQuickTileBottom()
                     break;
-
+                case Direction.Left:
+                    this.logger.warn(`Quick tile left`)
+                    workspace.slotWindowQuickTileLeft()
+                    break;
+                case Direction.Right:
+                    this.logger.warn(`Quick tile right`)
+                    workspace.slotWindowQuickTileRight()
+                    break;
             }
             return;
         }
@@ -349,5 +356,27 @@ export class ShortcutManager{
         });
 
         return response.filter((tile: Tile) => tile !== null);
+    }
+
+    private getScreenNumberInDirection(direction: Direction.Up | Direction.Down | Direction.Left | Direction.Right) {
+        const nextScreen = (workspace.activeScreen + 1) % workspace.numScreens;
+        const geom = workspace.activeClient?.geometry
+        if(geom === undefined){
+            return nextScreen;
+        }
+
+        const delta = 5;
+        switch (direction) {
+            case Direction.Up:
+                return workspace.screenAt(new Point(geom.x, geom.y - delta)) || nextScreen;
+            case Direction.Down:
+                return workspace.screenAt(new Point(geom.x, geom.y + geom.height + delta)) || nextScreen;
+            case Direction.Left:
+                return workspace.screenAt(new Point(geom.x - delta, geom.y)) || nextScreen;
+            case Direction.Right:
+                return workspace.screenAt(new Point(geom.x + geom.width + delta, geom.y)) || nextScreen;
+        }
+
+
     }
 }

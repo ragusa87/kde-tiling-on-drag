@@ -9,5 +9,8 @@
     "plugin:@typescript-eslint/eslint-recommended",
     "plugin:@typescript-eslint/recommended"
   ],
-  "ignorePatterns": ["contents/code/extern/*.ts"]
+  "ignorePatterns": ["contents/code/extern/*.ts"],
+  "rules": {
+    "quotes": ["error", "single"]
+  }
 }

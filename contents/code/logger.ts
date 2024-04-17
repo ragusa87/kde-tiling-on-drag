@@ -1,5 +1,5 @@
 /* eslint-disable  @typescript-eslint/no-explicit-any */
-import {LogLevel} from "./logLevel";
+import {LogLevel} from './logLevel';
 
 function log(level: LogLevel, ...value: any){
     if(level === LogLevel.DEBUG) {
@@ -15,19 +15,19 @@ function log(level: LogLevel, ...value: any){
         return;
     }
     if(level === LogLevel.ALERT) {
-        console.warn("Alert: ", value);
+        console.warn('Alert: ', value);
         return;
     }
     if(level === LogLevel.NOTICE) {
-        console.warn("Notice: ", value);
+        console.warn('Notice: ', value);
         return;
     }
     if(level === LogLevel.EMERGENCY) {
-        console.warn("EMERGENCY: ", value);
+        console.warn('EMERGENCY: ', value);
         return;
     }
     if(level === LogLevel.CRITICAL) {
-        console.warn("CRITICAL: ", value);
+        console.warn('CRITICAL: ', value);
         return;
     }
     if(level === LogLevel.ERROR) {
@@ -35,7 +35,7 @@ function log(level: LogLevel, ...value: any){
         return;
     }
 
-    console.log("Unknown log level: ", level, value);
+    console.log('Unknown log level: ', level, value);
 }
 
 

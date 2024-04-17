@@ -1,4 +1,4 @@
-import {LogLevel} from "./logLevel";
+import {LogLevel} from './logLevel';
 export class Config {
     set setForceRedraw(value: boolean) {
         this.doForceRedraw = value;

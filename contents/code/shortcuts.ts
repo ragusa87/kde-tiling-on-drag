@@ -1,6 +1,6 @@
-import {clientToString, isSameActivityAndDesktop, isSupportedClient} from "./clientHelper";
-import {Console} from "./logger";
-import {LogLevel} from "./logLevel";
+import {clientToString, isSameActivityAndDesktop, isSupportedClient} from './clientHelper';
+import {Console} from './logger';
+import {LogLevel} from './logLevel';
 
 export class Point implements QPoint {
     x: number;
@@ -10,16 +10,16 @@ export class Point implements QPoint {
         this.y = y;
     }
     toString(): string {
-        return "GtQPoint(" + this.x + ", " + this.y + ")";
+        return 'GtQPoint(' + this.x + ', ' + this.y + ')';
     }
 }
 
 const point = (x: number, y: number): QPoint => new Point(x, y);
 enum Direction {
-    Up = "Up",
-    Down = "Down",
-    Left = "Left",
-    Right = "Right",
+    Up = 'Up',
+    Down = 'Down',
+    Left = 'Left',
+    Right = 'Right',
 }
 class Shortcuts{
 
@@ -44,10 +44,10 @@ export class ShortcutManager{
 
         for(const directionKey of (Object.keys(Direction) as (keyof typeof Direction)[])){
             const direction = Direction[directionKey]
-            this.addShortcut(new Shortcuts("ApiTilingFocus" + direction, "ApiTiling: Focus window on " + direction, "Meta+" + direction, () => {
+            this.addShortcut(new Shortcuts('ApiTilingFocus' + direction, 'ApiTiling: Focus window on ' + direction, 'Meta+' + direction, () => {
                 this.focusClientInDirection(direction);
             }));
-            this.addShortcut(new Shortcuts("ApiTilingMove" + direction, "ApiTiling: Move window to " + direction, "Meta+Shift+" + direction, () => {
+            this.addShortcut(new Shortcuts('ApiTilingMove' + direction, 'ApiTiling: Move window to ' + direction, 'Meta+Shift+' + direction, () => {
                 this.moveClientInDirection(direction);
             }));
         }
@@ -66,7 +66,7 @@ export class ShortcutManager{
             this.logger.warn(`No client found in direction ${direction}`)
             return;
         }
-        this.logger.debug(`Focusing.. ${clientToString(client)}. Alternative clients: ${clients.map((client: AbstractClient) => clientToString(client)).join(", ")}`)
+        this.logger.debug(`Focusing.. ${clientToString(client)}. Alternative clients: ${clients.map((client: AbstractClient) => clientToString(client)).join(', ')}`)
 
         workspace.activeClient = client
     }
@@ -117,7 +117,7 @@ export class ShortcutManager{
                 break;
             }
 
-        console.log("client on direction " + direction)
+        console.log('client on direction ' + direction)
 
         // Find client in another screen
         if(client === undefined && (workspace.numScreens > 1 || workspace.clientList().length > 1) && attempts < 2) {
@@ -135,7 +135,7 @@ export class ShortcutManager{
     };
     protected swapClient(client1: AbstractClient, client2: AbstractClient){
         if(client1 === client2){
-            this.logger.debug("Clients are the same, no need to swap them")
+            this.logger.debug('Clients are the same, no need to swap them')
             return;
         }
         this.logger.debug(`Swapping ${clientToString(client1)} with ${clientToString(client2)}`)
@@ -148,7 +148,7 @@ export class ShortcutManager{
     public getTilesInDirection(direction: Direction, useAlternatives: boolean = true): Tile[] {
         const activeClient = this.getActiveClient();
         if (activeClient === null) {
-            this.logger.warn(`No active client`)
+            this.logger.warn('No active client')
             return [];
         }
         const point = this.getPointInDirection(direction);
@@ -168,7 +168,7 @@ export class ShortcutManager{
             response.push(...this.getBestTilesFromAnotherScreen(direction))
             response = response.filter((tile: Tile) => tile !== activeClient.tile);
         }
-        this.logger.debug(`Tiles in direction ${direction} ${response.map((tile: Tile) => tile.toString()).join(", ")}`)
+        this.logger.debug(`Tiles in direction ${direction} ${response.map((tile: Tile) => tile.toString()).join(', ')}`)
         return response;
     }
 
@@ -202,7 +202,7 @@ export class ShortcutManager{
     protected getPointInDirection(direction: Direction): QPoint | null{
         const activeClient = this.getActiveClient();
         if(activeClient === null){
-            this.logger.warn(`No active client`)
+            this.logger.warn('No active client')
             return null;
         }
         const geometry = activeClient.frameGeometry;
@@ -248,11 +248,11 @@ export class ShortcutManager{
     private moveClientInDirection(direction: Direction) {
         const activeClient = this.getActiveClient();
         if(activeClient === null){
-            this.logger.error("No active client")
+            this.logger.error('No active client')
             return;
         }
 
-        this.logger.error("Move " + clientToString(activeClient) + " to " + direction.toString() + " - screen " + workspace.activeScreen);
+        this.logger.error('Move ' + clientToString(activeClient) + ' to ' + direction.toString() + ' - screen ' + workspace.activeScreen);
 
         const tiles = this.getTilesInDirection(direction, false);
         if(tiles.length  === 0){
@@ -321,7 +321,7 @@ export class ShortcutManager{
                 response = screenClientArea.x <= screenNumberArea.x;
                 break;
         }
-        this.logger.debug(`Screen ${screenNumber}  ${response ? "match" : "doesn't match"} direction ${direction}`)
+        this.logger.debug(`Screen ${screenNumber}  ${response ? 'match' : 'doesn\'t match'} direction ${direction}`)
         return response;
     }
 
@@ -346,7 +346,7 @@ export class ShortcutManager{
 
             const alternatives = workspace.tilingForScreen(screenInfo.screen).rootTile?.tiles.filter((tile: Tile) => tile !== null).filter((tile) => !response.includes(tile)) ?? [];
             if(alternatives.length > 0) {
-                this.logger.debug(`Alternative tiles found in screen ${screenInfo.screen} : ${alternatives?.map((tile: Tile) => tile.toString()).join(", ")}`)
+                this.logger.debug(`Alternative tiles found in screen ${screenInfo.screen} : ${alternatives?.map((tile: Tile) => tile.toString()).join(', ')}`)
                 response.push(...alternatives);
             }
         });

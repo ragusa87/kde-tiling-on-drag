@@ -1,34 +1,34 @@
 export function clientToString(client: AbstractClient|undefined|null):string{
     if(!client){
-        return `null`
+        return 'null'
     }
-    return `${client.resourceName} ${client.internalId} ${client.screen}, ${client.desktop} ${client.activities.join(", ")}`;
+    return `${client.resourceName} ${client.internalId} ${client.screen}, ${client.desktop} ${client.activities.join(', ')}`;
 }
 
 export function tileToString(tile: Tile|undefined|null):string{
     if(!tile){
-        return `null`
+        return 'null'
     }
-    return `${tile.toString()} - ${tile.parent ? tile.parent.toString() : "no parent"}`
+    return `${tile.toString()} - ${tile.parent ? tile.parent.toString() : 'no parent'}`
 }
 
 
 export function isSupportedClient(client: AbstractClient):boolean{
     return client.normalWindow && !client.deleted &&
         // Ignore Konsole's confirm dialogs
-        !(client.caption.startsWith("Confirm ") && ["org.kde.konsole", "konsole"].includes(client.resourceClass)) &&
+        !(client.caption.startsWith('Confirm ') && ['org.kde.konsole', 'konsole'].includes(client.resourceClass)) &&
         // Ignore Spectacle's dialogs (spectacle on X11, org.kde.spectacle on wayland)
-        !(["org.kde.spectacle","spectacle"].includes(client.resourceClass)) &&
+        !(['org.kde.spectacle','spectacle'].includes(client.resourceClass)) &&
         // Ignore Klipper's "Action Popup menu"
-        !(["org.kde.plasmashell", "plasmashell"].includes(client.resourceClass) && client.caption === "Plasma") &&
+        !(['org.kde.plasmashell', 'plasmashell'].includes(client.resourceClass) && client.caption === 'Plasma') &&
         // Ignore jetbrains's "Splash screen"
-        !(client.resourceClass.includes("jetbrains") && client.caption === "splash") &&
+        !(client.resourceClass.includes('jetbrains') && client.caption === 'splash') &&
         // Ignore "Steam apps"
-        !(client.resourceClass.startsWith("steam_app_")) &&
+        !(client.resourceClass.startsWith('steam_app_')) &&
         // Ignore ktorrent
-        !(client.resourceClass.startsWith("org.kde.ktorrent") || client.resourceClass.startsWith("ktorrent")) &&
+        !(client.resourceClass.startsWith('org.kde.ktorrent') || client.resourceClass.startsWith('ktorrent')) &&
         // Ignore Eclipse windows
-        !(client.resourceClass.startsWith("Eclipse") || client.resourceClass.startsWith("eclipse"))
+        !(client.resourceClass.startsWith('Eclipse') || client.resourceClass.startsWith('eclipse'))
 }
 
 export function isSameActivityAndDesktop(client: AbstractClient):boolean{

@@ -16,7 +16,11 @@ reload: build # Reinstall script and reload it (must be activated in kwin settin
 	dbus-send --session --print-reply=literal --dest="org.kde.KWin" "/Scripting" "org.kde.kwin.Scripting.start"
 
 debug-logs: # Show kwin logs
-	journalctl -f -t kwin_wayland
+	@if [ "${XDG_SESSION_TYPE}" = "x11" ]; then \
+	    journalctl -f -t kwin_x11; \
+	else \
+	    journalctl -f -t kwin_wayland; \
+	fi
 debug-console: # Open interactive console
 	plasma-interactiveconsole
 list: # help

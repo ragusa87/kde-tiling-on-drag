@@ -16,19 +16,19 @@ export function tileToString(tile: Tile|undefined|null):string{
 export function isSupportedClient(client: AbstractClient):boolean{
     return client.normalWindow && !client.deleted &&
         // Ignore Konsole's confirm dialogs
-        !(client.caption.startsWith("Confirm ") && client.resourceClass === "org.kde.konsole") &&
-        // Ignore Spectacle's dialogs
-        !(client.resourceClass === "org.kde.spectacle") &&
+        !(client.caption.startsWith("Confirm ") && ["org.kde.konsole", "konsole"].includes(client.resourceClass)) &&
+        // Ignore Spectacle's dialogs (spectacle on X11, org.kde.spectacle on wayland)
+        !(["org.kde.spectacle","spectacle"].includes(client.resourceClass)) &&
         // Ignore Klipper's "Action Popup menu"
-        !(client.resourceClass === "org.kde.plasmashell" && client.caption === "Plasma") &&
+        !(["org.kde.plasmashell", "plasmashell"].includes(client.resourceClass) && client.caption === "Plasma") &&
         // Ignore jetbrains's "Splash screen"
         !(client.resourceClass.includes("jetbrains") && client.caption === "splash") &&
         // Ignore "Steam apps"
         !(client.resourceClass.startsWith("steam_app_")) &&
         // Ignore ktorrent
-        !(client.resourceClass.startsWith("org.kde.ktorrent")) &&
+        !(client.resourceClass.startsWith("org.kde.ktorrent") || client.resourceClass.startsWith("ktorrent")) &&
         // Ignore Eclipse windows
-        !(client.resourceClass.startsWith("Eclipse"))
+        !(client.resourceClass.startsWith("Eclipse") || client.resourceClass.startsWith("eclipse"))
 }
 
 export function isSameActivityAndDesktop(client: AbstractClient):boolean{

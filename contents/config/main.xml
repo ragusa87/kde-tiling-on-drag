@@ -18,7 +18,7 @@
             <default>false</default>
         </entry>
         <entry name="forceRedraw" type="bool">
-            <default>true</default>
+            <default>false</default>
         </entry>
         <entry name="maximizeSingleWindow" type="bool">
             <default>true</default>

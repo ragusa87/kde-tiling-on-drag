@@ -45,6 +45,6 @@ export class Config {
     doMaximizeWhenNoLayoutExists: boolean = true;
     doShowOutline: boolean = true;
     rearrangeBetweenMonitors: boolean = false;
-    doForceRedraw: boolean = true;
+    doForceRedraw: boolean = false;
     doRearrangeWindows: boolean = true;
 }

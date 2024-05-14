@@ -6,7 +6,8 @@ import {
     clientToString,
     isSameActivityAndDesktop,
     isSupportedClient,
-    tileToString
+    tileToString,
+    point
 } from './clientHelper';
 import {cancelTimeout, setTimeout} from './timeout';
 import {ShortcutManager} from './shortcuts';
@@ -15,11 +16,13 @@ export class Tiler{
     config: Config;
     logger: Console;
     shortcuts: ShortcutManager;
-    clientFinishUserMovedResizedListener: (client: AbstractClient) => void;
-    clientStepUserMovedResizedListener: (client: AbstractClient, geometry: QRect) => void;
+    interactiveMoveResizeFinished: () => void;
+    interactiveMoveResizeStepped: (geometry: QRect) => void;
     private timer: QTimerInterface|null = null;
     clientScreenChangedListener: () => void;
-    isMoving: boolean = false; // True if the user is moving a window (set by clientStepUserMovedResizedListener/clientFinishUserMovedResizedListener)
+    minimizedChanged: () => void;
+    lastWindowActivated: AbstractClient|null = null
+    isMoving: boolean = false; // True if the user is moving a window (set by interactiveMoveResizeStepped/interactiveMoveResizeFinished)
     constructor(config: Config){
         this.config = config;
 
@@ -27,10 +30,13 @@ export class Tiler{
         this.shortcuts = new ShortcutManager();
         this.shortcuts.apply()
 
-        this.clientFinishUserMovedResizedListener = (client: AbstractClient) => {
-            this.event( `clientFinishUserMovedResized ${clientToString(client)}`)
+        this.interactiveMoveResizeFinished = () => {
+            this.event( `interactiveMoveResizeFinished ${clientToString(workspace.activeWindow)}`)
             this.isMoving = false;
-            this.tileClient(client, 'clientFinishUserMovedResized')
+            if(workspace.activeWindow === null){
+                return;
+            }
+            this.tileClient(workspace.activeWindow, 'interactiveMoveResizeFinished')
         };
 
         this.clientScreenChangedListener = () => {
@@ -40,31 +46,32 @@ export class Tiler{
                 return;
             }
             this.event('clientScreenChangedListener')
-            if(workspace.activeClient === null){
-                this.logger.warn('clientScreenChangedListener: workspace.activeClient is null');
+            if(workspace.activeWindow === null){
+                this.logger.warn('clientScreenChangedListener: workspace.activeWindow is null');
                 return;
             }
-            this.retileOther(workspace.activeClient)
+            this.retileOther(workspace.activeWindow)
         }
 
-        this.clientStepUserMovedResizedListener = (client: AbstractClient, geometry: QRect) => {
-            this.event( 'clientStepUserMovedResizedListener')
+        this.interactiveMoveResizeStepped = (geometry: QRect) => {
+            this.event( `interactiveMoveResizeStepped with geometry: ${geometry}`)
             this.isMoving = true;
-            if(!this.config.doShowOutline){
+            if(!this.config.doShowOutline || workspace.activeWindow === null){
                 return
             }
+            const client: AbstractClient = workspace.activeWindow
 
             // Calculate the outline geometry
-            const position = this.getPosition(geometry);
-            const tile = workspace.tilingForScreen(client.screen)?.bestTileForPosition(position.x, position.y)
+            const position = this.getPosition(client);
+            const tile = workspace.tilingForScreen(client.output.name)?.bestTileForPosition(position.x, position.y)
             let outlineGeometry = tile ? tile.absoluteGeometry : null;
 
             // If we have more than one window on the screen, show the outline maximized
-            const numberOfOtherTiledWindows = this.getTiledClientsOnScreen(client.screen).filter((otherClient: AbstractClient) => otherClient !== client).length;
-            const numberOfOtherUnTiledWindows = this.getUntiledClientOnScreen(client.screen).filter((otherClient: AbstractClient) => otherClient !== client).length;
+            const numberOfOtherTiledWindows = this.getTiledClientsOnScreen(client.output.name).filter((otherClient: AbstractClient) => otherClient !== client).length;
+            const numberOfOtherUnTiledWindows = this.getUntiledClientOnScreen(client.output.name).filter((otherClient: AbstractClient) => otherClient !== client).length;
 
             if(numberOfOtherTiledWindows + numberOfOtherUnTiledWindows === 0 && this.config.doMaximizeSingleWindow){
-                outlineGeometry = workspace.clientArea(KWin.MaximizeArea, client.screen, client.desktop);
+                outlineGeometry = workspace.clientArea(KWin.MaximizeArea, client.output, workspace.currentDesktop);
             }
 
             if(outlineGeometry !== null){
@@ -74,19 +81,37 @@ export class Tiler{
             }
         };
 
+        this.minimizedChanged = () => {
+            // TODO workspace.activeWindow is null when we minimize a window..
+            this.event( `minimizedChanged: ${clientToString(workspace.activeWindow)} ${workspace.activeWindow?.minimized ? 'minimized' : 'unminimized'}`)
+
+            // Use the last activated window when there is no active window
+            let window = workspace.activeWindow
+            if(window === null && this.lastWindowActivated !== null){
+               const clients = workspace.windowList().filter((client) => client === this.lastWindowActivated)
+                window = clients.length > 0 ? clients[0] : window
+            }
+
+            if(window === null || window.minimized || workspace.activeWindow === null) {
+                this.retileOther(window)
+                return
+            }
+            this.tileClient(workspace.activeWindow, 'Unminimized')
+        }
+
         // Log properties at startup
-        workspace.clientList().forEach((oneClient: AbstractClient) => {
+        workspace.windowList().forEach((oneClient: AbstractClient) => {
             this.logWindowProperties(oneClient)
         });
 
         // Attach all existing windows at startup
-        workspace.clientList().filter(this.isSupportedClient).forEach((client: AbstractClient) => {
+        workspace.windowList().filter(this.isSupportedClient).forEach((client: AbstractClient) => {
             this.detachClient(client);
             this.attachClient(client);
         });
 
         // Attach new client
-        workspace.clientAdded.connect((client: AbstractClient) => {
+        workspace.windowAdded.connect((client: AbstractClient) => {
             this.logWindowProperties(client)
 
             if(! this.isSupportedClient(client)){
@@ -97,36 +122,26 @@ export class Tiler{
             this.attachClient(client)
         });
 
+        workspace.windowActivated.connect(client => {
+            if(client === null || ! this.isSupportedClient(client)){
+                return;
+            }
+            this.event(`windowActivated: ${clientToString(client)}`)
+            this.lastWindowActivated = client
+        })
+
         // Detach old client
-        workspace.clientRemoved.connect((client: AbstractClient) => {
+        workspace.windowRemoved.connect((client: AbstractClient) => {
             if(! this.isSupportedClient(client)){
                 return;
             }
-            this.event(`clientRemoved: ${clientToString(client)}`)
+
+            this.event(`windowRemoved: ${clientToString(client)}`)
             this.detachClient(client)
         });
 
-        // On un-minimize, re-tile the window
-        workspace.clientUnminimized.connect((client: AbstractClient) => {
-            if(! this.isSupportedClient(client)){
-                return;
-            }
-            this.event( `clientUnminimized: ${clientToString(client)}`)
-            this.tileClient(client, 'Unminimized')
-        });
-
-        // On minimize, re-tile other window
-        workspace.clientMinimized.connect((client: AbstractClient) => {
-            if(! this.isSupportedClient(client)){
-                return;
-            }
-            this.event( `clientMinimized: ${clientToString(client)}`)
-            client.tile = null;
-            this.retileOther(client)
-        });
-
         // Listen for layout change on each screen's root tile
-        this.getAllScreensNumbers(0).forEach((screen: number) => {
+        this.getAllScreensNames(workspace.activeScreen.name).forEach((screen: string) => {
             const tileManager = workspace.tilingForScreen(screen);
             if(tileManager === null){
                 this.logger.warn(`No tileManager for screen ${screen} ??`);
@@ -149,7 +164,6 @@ export class Tiler{
             });
         });
     }
-
     /**
      * Filter client to be on the same activity and desktop
      */
@@ -173,9 +187,10 @@ export class Tiler{
      */
     private attachClient(client: AbstractClient){
         this.logger.info(`> attachClient ${clientToString(client)}`);
-        client.clientFinishUserMovedResized.connect(this.clientFinishUserMovedResizedListener);
-        client.clientStepUserMovedResized.connect(this.clientStepUserMovedResizedListener);
-        client.screenChanged.connect(this.clientScreenChangedListener);
+        client.interactiveMoveResizeFinished.connect(this.interactiveMoveResizeFinished);
+        client.interactiveMoveResizeStepped.connect(this.interactiveMoveResizeStepped);
+        client.outputChanged.connect(this.clientScreenChangedListener);
+        client.minimizedChanged.connect(this.minimizedChanged);
         this.tileClient(client, 'attachClient');
     }
 
@@ -184,9 +199,14 @@ export class Tiler{
      */
     private detachClient(client: AbstractClient){
         this.logger.info(`> detachClient ${clientToString(client)}`);
-        client.clientFinishUserMovedResized.disconnect(this.clientFinishUserMovedResizedListener);
-        client.clientStepUserMovedResized.disconnect(this.clientStepUserMovedResizedListener);
-        client.screenChanged.disconnect(this.clientScreenChangedListener);
+        client.interactiveMoveResizeFinished.disconnect(this.interactiveMoveResizeFinished);
+        client.interactiveMoveResizeStepped.disconnect(this.interactiveMoveResizeStepped);
+        client.outputChanged.disconnect(this.clientScreenChangedListener);
+        client.minimizedChanged.disconnect(this.minimizedChanged);
+
+        if(this.lastWindowActivated === client){
+            this.lastWindowActivated = null;
+        }
 
         client.tile = null;
         this.retileOther(client);
@@ -196,18 +216,25 @@ export class Tiler{
      * Return the coordinate used to find the best tile for a window.
      * Either the cursor's position or the center of the window.
      */
-    private getPosition(geometry: QRect){
+    private getPosition(client: AbstractClient|null){
         const cursorX = workspace.cursorPos.x
         const cursorY = workspace.cursorPos.y
-        // If the cursor is within the window's bounds, we are dragging the window => use the cursor's position
-        if(cursorX >= geometry.x && cursorX <= geometry.x + geometry.width && cursorY >= geometry.y && cursorY <= geometry.y + geometry.height){
+        const geometry = client?.clientGeometry ?? null
+        // we are dragging the window => use the cursor's position
+        if(geometry !== null && cursorX >= geometry.x && cursorX <= geometry.x + geometry.width && cursorY >= geometry.y && cursorY <= geometry.y + geometry.height){
+            console.debug(`Use cursor position ${cursorX},${cursorY}`)
             return {x:cursorX,y:cursorY};
+        }
+
+        if(!geometry){
+            console.warn('No geometry provided')
+            return {x: 0, y: 0}
         }
 
         // Use the center of the window (Not sure if we even need this)
         const x: number = geometry.x + (geometry.width/2)
         const y: number = geometry.y + (geometry.height/2)
-
+        console.warn(`Use window center ${clientToString(client)} instead of cursor position (mouse: ${cursorX},${cursorY}, window: ${geometry.x},${geometry.y} w${geometry.width}h${geometry.height})`)
         return {x,y}
     }
 
@@ -231,18 +258,18 @@ export class Tiler{
     private doTile(client: AbstractClient, reason: string = ''){
 
         // Take the current position to find the best tile
-        const position = this.getPosition(client.geometry);
+        const position = this.getPosition(client);
 
         // Get the tiling manager from KDE
-        const tileManager = workspace.tilingForScreen(client.screen);
+        const tileManager = workspace.tilingForScreen(workspace.activeScreen.name);
 
         // Ask where is the best location for this current window and assign it to the client.
         const bestTileForPosition = tileManager.bestTileForPosition(position.x, position.y);
         if(bestTileForPosition === null && this.config.doMaximizeWhenNoLayoutExists){
             this.logger.debug(`No tile exists for ${clientToString(client)}, maximize it instead`);
-            client.geometry = workspace.clientArea(KWin.MaximizeArea, client.screen, client.desktop);
+            client.frameGeometry = workspace.clientArea(KWin.MaximizeArea, client.output, workspace.currentDesktop);
         }
-        this.logger.info(`doTile: ${clientToString(client)} to ${bestTileForPosition?.toString()} (${reason}) screen ${client.screen}`);
+        this.logger.info(`doTile: ${clientToString(client)} to ${bestTileForPosition?.toString()} (${reason}) screen ${client.output.name}`);
 
         client.tile = bestTileForPosition
     }
@@ -250,9 +277,9 @@ export class Tiler{
     /**
      * Return all available tiles for the given screens (except the root tiles)
      */
-    private getAllTiles(...screens: number[]): Tile[]{
+    private getAllTiles(...screens: string[]): Tile[]{
         let tiles: Tile[] = [];
-        screens.forEach((screen: number) => {
+        screens.forEach((screen: string) => {
             const tileManager = workspace.tilingForScreen(screen);
             if(tileManager === null){
                 this.logger.notice(`no tileManager for screen ${screen} ??`);
@@ -307,27 +334,22 @@ export class Tiler{
     }
 
     /**
-     * Return all screen number available.
-     * @param favoriteNumber will be the first screen number returned.
+     * Return all screen names available.
+     * @param favoriteScreenName will be the first screen number returned.
      */
-    private getAllScreensNumbers(favoriteNumber: number): number[]{
-        const screens: number[] = [];
-        if(favoriteNumber < 0 || favoriteNumber > workspace.numScreens -1 ){
-            this.logger.warn(`favoriteNumber is invalid: ${favoriteNumber} (numScreens: ${workspace.numScreens})`);
-        }
-        screens.push(favoriteNumber);
-
-        for(let i = 0; i < workspace.numScreens; i++){
-            if(!screens.includes(i)) {
-                screens.push(i);
+    private getAllScreensNames(favoriteScreenName: string|null): string[]{
+        const screens: string[] = [];
+        screens.push(favoriteScreenName ?? '');
+        workspace.screens.forEach(output  => {
+            if(!screens.includes(output.name)) {
+                screens.push(output.name);
             }
-        }
+        })
         if(this.config.logDebugScreens){
-            this.logger.debug(`screens: ${screens.join(', ')} (favorite: ${favoriteNumber}, total: ${workspace.numScreens})`)
-
+            this.logger.debug(`screens: ${screens.join(', ')} (favorite: ${favoriteScreenName}, total: ${workspace.screens.length})`)
         }
 
-        return screens;
+        return screens.filter((screen: string) => screen !== '');
     }
 
 
@@ -360,25 +382,28 @@ export class Tiler{
         }
 
         client.tile = null;
-        client.geometry = workspace.clientArea(KWin.MaximizeArea, client.screen, client.desktop);
+        client.frameGeometry = workspace.clientArea(KWin.MaximizeArea, client.output, workspace.currentDesktop);
     }
 
     /**
      * Re-tile other windows (so they can fit a better position due to the change of the given client)
      */
-    private retileOther(client: AbstractClient) {
+    private retileOther(myClient: AbstractClient|null) {
+        const client = myClient ?? workspace.windowList().filter(this.isSupportedClient).filter(this.isSameActivityAndDesktop).filter((client: AbstractClient) => !client.minimized)[0] ?? null;
         if(!this.config.doRearrangeWindows){
             // Minimize/maximize all windows on the screen
-            this.getAllScreensNumbers(client.screen).forEach((screen: number) => {
+            this.getAllScreensNames(client?.output?.name).forEach((screen: string) => {
                 this.handleMaximizeMinimize(screen, `finished retileOther: Screen: ${screen}`);
             });
             return;
         }
-        this.logger.debug(`re-tile other windows due to change on ${clientToString(client)}. Screen: ${client.screen}`);
+        const output = client ? client.output : workspace.activeScreen
+
+        this.logger.debug('re-tile other windows');
 
         const justRetiled: AbstractClient[] = [];
         // Tile all clients (this will un-maximize maximized window)
-        workspace.clientList()
+        workspace.windowList()
             .filter(this.isSupportedClient)
             .filter(this.isSameActivityAndDesktop)
             .filter((otherClient) => !otherClient.minimized)
@@ -390,9 +415,9 @@ export class Tiler{
 
 
         // Build the list of free tiles "per screen" and "overall"
-        const freeTileOnScreens: Map<number, Tile[]> = new Map();
+        const freeTileOnScreens: Map<string, Tile[]> = new Map();
         let freeTilesOverall: Tile[] = []
-        this.getAllScreensNumbers(client.screen).forEach((screen: number) => {
+        this.getAllScreensNames(output.name).forEach((screen: string) => {
             const currentFreeTiles : Tile[] = []
             freeTileOnScreens.set(screen, currentFreeTiles);
             this.getAllTiles(screen).forEach((tile: Tile) => {
@@ -413,7 +438,7 @@ export class Tiler{
         });
 
         // For each screen
-        this.getAllScreensNumbers(client.screen).forEach((screen: number) =>
+        this.getAllScreensNames(output.name).forEach((screen: string) =>
         {
             const freeTileOnScreen = freeTileOnScreens.get(screen) ?? [];
             // Move stacked window to a free tile if any
@@ -472,18 +497,18 @@ export class Tiler{
         })
 
         // Minimize/maximize all windows on the screen
-        this.getAllScreensNumbers(client.screen).forEach((screen: number) => {
+        this.getAllScreensNames(client.output.name).forEach((screen: string) => {
             this.handleMaximizeMinimize(screen, `finished retileOther: Screen: ${screen}`);
         });
 
         // Output the client's list if the option is enabled
-        this.debugTree(client.desktop)
+        this.debugTree()
     }
 
     /**
      * Tile all clients on a given screen
      */
-    private tileScreen(screen: number,reason: string) {
+    private tileScreen(screen: string,reason: string) {
         this.getUntiledClientOnScreen(screen).forEach((client: AbstractClient) => {
             this.logger.debug(`re-tile ${clientToString(client)} for screen ${screen} - reorganization (${reason})`);
             this.doTile(client, reason);
@@ -493,9 +518,9 @@ export class Tiler{
     /**
      * List all untiled clients on a given screen
      */
-    private getUntiledClientOnScreen(screen: number) {
-        return workspace.clientList().filter(this.isSupportedClient).filter(this.isSameActivityAndDesktop).filter((client: AbstractClient) => {
-            return client.screen === screen && client.tile === null && !client.minimized;
+    private getUntiledClientOnScreen(screen: string) {
+        return workspace.windowList().filter(this.isSupportedClient).filter(this.isSameActivityAndDesktop).filter((client: AbstractClient) => {
+            return client.output.name === screen && client.tile === null && !client.minimized;
         })
     }
 
@@ -518,7 +543,6 @@ export class Tiler{
 
         // Change a tile setting, so all windows in it got repositioned
         if(client.tile !== null){
-            this.doLogIf(this.config.logMaximize, LogLevel.DEBUG, `Change padding to resize ${clientToString(client)}`)
             this.forceRedraw(client.tile)
         }else{
             // Sometimes, the client is not tiled as doMaximizeWhenNoLayoutExists is off, so we do not have any tile.
@@ -530,16 +554,16 @@ export class Tiler{
     /**
      * Output information about the current screen, list the tiles and clients.
      */
-    private debugTree(desktop: number) {
+    private debugTree() {
         if(!this.config.logDebugTree){
             return;
         }
-        let output = `> debugTree (desktop: ${desktop}, activity: ${workspace.currentActivity})\n`;
+        let output = `> debugTree (activity: ${workspace.currentActivity})\n`;
         const tab= ' '
         const tab2 = tab + tab;
         const tab3 = tab2 + tab;
         const tab4 = tab3 + tab;
-        this.getAllScreensNumbers(0).forEach((screen: number) => {
+        this.getAllScreensNames(workspace.activeScreen.name).forEach((screen: string) => {
             output += `screen ${screen} - tiled: ${this.getTiledClientsOnScreen(screen).length} untiled: ${this.getUntiledClientOnScreen(screen).length} number of tiles: ${this.getAllTiles(screen).length} \n`;
             if(this.getUntiledClientOnScreen(screen).length > 0) {
                 output += `${tab2} - untiled:\n${this.getUntiledClientOnScreen(screen).map((client: AbstractClient) => `${tab3} - ${clientToString(client)}`).join(', ')}\n`;
@@ -564,7 +588,7 @@ export class Tiler{
     /**
      * Maximize or un-Maximize all windows on the given screen
      */
-    private handleMaximizeMinimize(screen: number, reason: string) {
+    private handleMaximizeMinimize(screen: string, reason: string) {
 
         // Make sure all client are tiled
         this.tileScreen(screen, 'handleMaximizeMinimize');
@@ -631,11 +655,11 @@ export class Tiler{
     /**
      * Get all tiled clients on the given screen
      */
-    private getTiledClientsOnScreen(screen: number) {
-        return workspace.clientList()
+    private getTiledClientsOnScreen(screen: string) {
+        return workspace.windowList()
             .filter(this.isSupportedClient)
             .filter(this.isSameActivityAndDesktop)
-            .filter((client: AbstractClient) => client.screen === screen )
+            .filter((client: AbstractClient) => client.output.name === screen )
             .filter((client: AbstractClient) => !client.minimized)
             .filter((client: AbstractClient) => client.tile !== null)
             ;
@@ -649,8 +673,11 @@ export class Tiler{
         if(tile === null || !this.config.doForceRedraw) {
             return;
         }
-        this.logger.debug(`Force redraw for ${tile.toString()}`);
-        tile.padding += 1;
-        tile.padding -= 1;
+
+        this.doLogIf(this.config.logMaximize, LogLevel.DEBUG, `Force redraw tile ${tile.toString()}`)
+        tile.moveByPixels(point(1, 0));
+        tile.moveByPixels(point(-1, 0));
+        //  tile.padding += 1;
+        //  tile.padding -= 1;
     }
 }

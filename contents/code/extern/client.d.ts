@@ -41,14 +41,18 @@ declare interface KWinEnums{
     ElectricTopLeft: number;
     ElectricNone: number;
 }
+
+declare interface VirtualDesktop{
+
+}
 declare interface Toplevel {
     readonly popupWindow: boolean;
     readonly frameGeometry: QRect;
-    desktop: number;
+    desktops: VirtualDesktop[];
     frameGeometryChanged: Signal<(client: AbstractClient, oldGeometry: QRect) => void>;
     clientGeometryChanged: Signal<(client: AbstractClient, oldGeometry: QRect) => void>;
     windowClosed: Signal<(client: AbstractClient, deleted: object) => void>;
-    screenChanged: Signal<() => void>;
+    outputChanged: Signal<() => void>;
 }
 
 // See https://invent.kde.org/plasma/kwin/-/blob/master/src/window.h
@@ -62,8 +66,7 @@ declare interface AbstractClient extends Toplevel {
     readonly width: number
     readonly height: number
     // opacity: number
-    screen: number;
-    // output: number; Unable to handle unregistered datatype 'KWin::Output*'
+    readonly output: Output;
     // rect: QRectF
     readonly resourceName: string;
     resourceClass: string;
@@ -124,7 +127,7 @@ declare interface AbstractClient extends Toplevel {
     readonly transient: boolean;
     // transientFor
     readonly modal: boolean;
-    geometry: QRect;
+    readonly clientGeometry: QRect;
     frameGeometry: QRect; //  is read/write for abstractclient
     readonly move: boolean;
     //readonly resize: boolean;
@@ -155,17 +158,36 @@ declare interface AbstractClient extends Toplevel {
 
     // signals
     //desktopPresenceChanged: Signal<(client: AbstractClient, desktop: number) => void>; => Removed by https://invent.kde.org/plasma/kwin/-/merge_requests/3677
-    desktopChanged: Signal<() => void>;
+    desktopsChanged: Signal<() => void>;
     fullScreenChanged: Signal<() => void>;
-    activitiesChanged: Signal<(client: AbstractClient) => void>;
-    clientMaximizedStateChanged: Signal<(client: AbstractClient, horizontal: boolean, vertical: boolean) => void>;
-    clientFinishUserMovedResized: Signal<(client: AbstractClient) => void>;
-    clientStepUserMovedResized: Signal<(client: AbstractClient, geometry: QRect) => void>;
-    moveResizedChanged: Signal<() => void>;
-    quickTileModeChanged: Signal<() => void>;
+    activitiesChanged: Signal<() => void>;
+    colorSchemeChanged: Signal<() => void>;
+    captionChanged: Signal<() => void>;
+    captionNormalChanged: Signal<() => void>;
+    // maximizedAboutToChange: Signal<(MaximizeMode) => void>;
     minimizedChanged: Signal<() => void>;
-    outputChanged: Signal<() => void>;
-    geometryChanged: Signal<() => void>;
+    transientChanged: Signal<() => void>;
+    modalChanged: Signal<() => void>;
+    quickTileModeChanged: Signal<() => void>;
+    interactiveMoveResizeStarted: Signal<() => void>;
+    //moveResizeCursorChanged: Signal<(CursorShape) => void>;
+    interactiveMoveResizeStepped: Signal<(geometry: QRect) => void>;
+    interactiveMoveResizeFinished: Signal<() => void>;
+    closeableChanged: Signal<(value: boolean) => void>;
+    minimizeableChanged: Signal<(value: boolean) => void>;
+    shadeableChanged: Signal<(value: boolean) => void>;
+    desktopFileNameChanged: Signal<() => void>;
+    applicationMenuChanged: Signal<() => void>;
+    hasApplicationMenuChanged: Signal<(value: boolean) => void>;
+    moveResizedChanged: Signal<() => void>;
+    unresponsiveChanged: Signal<(value: boolean) => void>;
+    decorationChanged: Signal<() => void>;
+    hiddenChanged: Signal<() => void>;
+    hiddenByShowDesktopChanged: Signal<() => void>;
+    lockScreenOverlayChanged: Signal<() => void>;
+    readyForPaintingChanged: Signal<() => void>;
+    maximizeGeometryRestoreChanged: Signal<() => void>;
+    fullscreenGeometryRestoreChanged: Signal<() => void>;
 // Other signals:
 // objectNameChanged
 // stackingOrderChanged: Signal
@@ -301,26 +323,34 @@ declare interface TileManager {
     bestTileForPosition(x: number, y: number): Tile | null;
 }
 
+declare interface Output{
+    readonly name: string
+    readonly manufacturer: string
+    readonly model: string
+    readonly serialNumber: string
+    readonly geometry: QRect
+}
 declare interface WorkspaceWrapper {
     readonly virtualScreenGeometry: QRect;
-    activeClient: AbstractClient | null;
-    activeScreen: number;
+    activeWindow: AbstractClient | null;
+    activeScreen: Output;
     currentActivity: string;
-    currentDesktop: number;
+    currentDesktop: VirtualDesktop;
     desktops: number;
-    numScreens: number;
+    screens: Output[];
     // found it
     cursorPos: QPoint;
-    tilingForScreen(desktop: number): TileManager;
+    tilingForScreen(desktopName: string): TileManager;
     supportInformation(): string;
-    clientList(): AbstractClient[];
-    clientArea(option: number, screen: number, desktop: number): QRect;
+    windowList(): AbstractClient[];
     clientArea(option: number, client: AbstractClient): QRect;
+    clientArea(option: number, output: Output, desktop: VirtualDesktop): QRect;
+
     hideOutline(): void;
     showOutline(geometry: QRect): void;
     showOutline(x: number,  y:number,  width:number,  height:number): void;
-    sendClientToScreen(client: AbstractClient, screen: number): void;
-    screenAt(point: QPoint): number|undefined;
+    sendClientToScreen(client: AbstractClient, screen: string): void;
+    screenAt(point: QPoint): Output|undefined;
     slotWindowMaximize: () => void
     slotWindowQuickTileLeft: () => void;
     slotWindowQuickTileRight: () => void;
@@ -328,16 +358,19 @@ declare interface WorkspaceWrapper {
     slotWindowQuickTileBottom: () => void;
 
     // signals
-    clientAdded: Signal<(client: AbstractClient) => void>;
-    clientRemoved: Signal<(client: AbstractClient) => void>;
-    clientActivated: Signal<(client: AbstractClient) => void>;
-    clientMinimized: Signal<(client: AbstractClient) => void>;
-    clientUnminimized: Signal<(client: AbstractClient) => void>;
-    // idk what user does
-    clientFullScreenSet: Signal<(client: AbstractClient, fullscreen: boolean, user: any) => void>;
-    // signals for workspace
-    currentDesktopChanged: Signal<(oldDesktop: number, client: AbstractClient) => void>;
+    windowAdded: Signal<(client: AbstractClient) => void>;
+    windowRemoved: Signal<(client: AbstractClient) => void>;
+    windowActivated: Signal<(client: AbstractClient|null) => void>;
+    desktopsChanged: Signal<() => void>;
+    desktopLayoutChanged: Signal<() => void>;
+    screensChanged: Signal<() => void>;
     currentActivityChanged: Signal<(activity: string) => void>;
+    activitiesChanged: Signal<(activity: string) => void>;
+    activityAdded: Signal<(activity: string) => void>;
+    activityRemoved: Signal<(activity: string) => void>;
+    virtualScreenSizeChanged: Signal<() => void>;
+    virtualScreenGeometryChanged: Signal<() => void>;
+    currentDesktopChanged: Signal<(oldDesktop: VirtualDesktop) => void>;
 }
 declare interface Options {
     configChanged: Signal<() => void>;

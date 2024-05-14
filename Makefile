@@ -4,11 +4,12 @@ MAIN_FILE=contents/code/main.js
 MAIN_FILE_TYPESCRIPT=contents/code/main.ts
 
 install: build # Install script
-	plasmapkg2 -t kwinscript -s $(PROJECT_NAME) \
-		&& plasmapkg2 -u $(KWINPKG_FILE) \
-		|| plasmapkg2 -i $(KWINPKG_FILE)
+	# kpackagetool6 -t kwinscript
+	kpackagetool6 -t KWin/Script -s $(PROJECT_NAME) \
+		&& kpackagetool6 -t KWin/Script -u $(KWINPKG_FILE) \
+		|| kpackagetool6 -t KWin/Script -i $(KWINPKG_FILE)
 uninstall: # Uninstall script
-	plasmapkg2 -t kwinscript -r $(PROJECT_NAME)
+	kpackagetool6 -t KWin/Script -r $(PROJECT_NAME)
 
 reload: build # Reinstall script and reload it (must be activated in kwin settings)
 	dbus-send --session --print-reply=literal --dest="org.kde.KWin" "/Scripting" "org.kde.kwin.Scripting.unloadScript" string:"$(PROJECT_NAME)"
@@ -32,7 +33,7 @@ clear: # Clear build files and artifacts
 	rm -f "$(KWINPKG_FILE)"
 	rm -Rf build
 	rm -f contents/code/*.js
-	npm install
+	bash -c "set -xve; [[ ! -d node_modules ]] && npm install || exit 0"
 lint: clear # Lint
 	npx eslint -c .eslintrc.json contents
 fix: clear # Lint and fix

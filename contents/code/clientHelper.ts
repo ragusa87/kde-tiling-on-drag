@@ -1,8 +1,10 @@
+import {Point} from './shortcuts';
+
 export function clientToString(client: AbstractClient|undefined|null):string{
     if(!client){
         return 'null'
     }
-    return `${client.resourceName} ${client.internalId} ${client.screen}, ${client.desktop} ${client.activities.join(', ')}`;
+    return `${client.resourceName} ${client.internalId}`;
 }
 
 export function tileToString(tile: Tile|undefined|null):string{
@@ -14,13 +16,13 @@ export function tileToString(tile: Tile|undefined|null):string{
 
 
 export function isSupportedClient(client: AbstractClient):boolean{
-    return client.normalWindow && !client.deleted &&
+    return client.normalWindow &&
+        // Ignore notifications
+        !client.notification &&
         // Ignore Konsole's confirm dialogs
         !(client.caption.startsWith('Confirm ') && ['org.kde.konsole', 'konsole'].includes(client.resourceClass)) &&
         // Ignore Spectacle's dialogs (spectacle on X11, org.kde.spectacle on wayland)
         !(['org.kde.spectacle','spectacle'].includes(client.resourceClass)) &&
-        // Ignore Klipper's "Action Popup menu"
-        !(['org.kde.plasmashell', 'plasmashell'].includes(client.resourceClass) && client.caption === 'Plasma') &&
         // Ignore jetbrains's "Splash screen"
         !(client.resourceClass.includes('jetbrains') && client.caption === 'splash') &&
         // Ignore "Steam apps"
@@ -28,11 +30,20 @@ export function isSupportedClient(client: AbstractClient):boolean{
         // Ignore ktorrent
         !(client.resourceClass.startsWith('org.kde.ktorrent') || client.resourceClass.startsWith('ktorrent')) &&
         // Ignore Eclipse windows
-        !(client.resourceClass.startsWith('Eclipse') || client.resourceClass.startsWith('eclipse'))
+        !(client.resourceClass.startsWith('Eclipse') || client.resourceClass.startsWith('eclipse')) &&
+        // KDE Greater (login/logout dialog)
+        !(client.resourceClass.startsWith('ksmserver-')) &&
+        // Plasma Shell (logout dialog, etc.) + Ignore Klipper's "Action Popup menu"
+        !(['org.kde.plasmashell', 'plasmashell'].includes(client.resourceClass) && ['Plasma', 'plasmashell'].includes(client.caption)) &&
+        // Lock screen
+        client.resourceClass !== 'kwin_wayland' &&
+        // Outline of the window
+        ![null, undefined, ''].includes(client.caption)
+
 }
 
 export function isSameActivityAndDesktop(client: AbstractClient):boolean{
-    return (client.onAllDesktops || client.desktop === workspace.currentDesktop) &&
+    return (client.onAllDesktops || client.desktops.includes(workspace.currentDesktop)) &&
         (client.activities.length === 0 || client.activities.includes(workspace.currentActivity));
 }
 
@@ -57,6 +68,8 @@ export function clientProperties (client: AbstractClient):string{
                 caption ? ${client.caption}
                 windowRole ? ${client.windowRole}
                 windowType ? ${client.windowType}
+                deleted ? ${client.deleted}
             `
     }
 
+export const point = (x: number, y: number): QPoint => new Point(x, y);

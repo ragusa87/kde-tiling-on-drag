@@ -36,7 +36,7 @@ export class Tiler{
             if(workspace.activeWindow === null){
                 return;
             }
-            this.tileClient(workspace.activeWindow, 'interactiveMoveResizeFinished')
+            this.tileClient(workspace.activeWindow, 'interactiveMoveResizeFinished', workspace.cursorPos)
         };
 
         this.clientScreenChangedListener = () => {
@@ -62,7 +62,7 @@ export class Tiler{
             const client: AbstractClient = workspace.activeWindow
 
             // Calculate the outline geometry
-            const position = this.getPosition(client);
+            const position = this.getPosition(client, workspace.cursorPos);
             const tile = workspace.tilingForScreen(client.output.name)?.bestTileForPosition(position.x, position.y)
             let outlineGeometry = tile ? tile.absoluteGeometry : null;
 
@@ -216,16 +216,15 @@ export class Tiler{
      * Return the coordinate used to find the best tile for a window.
      * Either the cursor's position or the center of the window.
      */
-    private getPosition(client: AbstractClient|null){
-        const cursorX = workspace.cursorPos.x
-        const cursorY = workspace.cursorPos.y
-        const geometry = client?.clientGeometry ?? null
+    private getPosition(client: AbstractClient|null, cursor: QPoint|null = null): QPoint{
+
         // we are dragging the window => use the cursor's position
-        if(geometry !== null && cursorX >= geometry.x && cursorX <= geometry.x + geometry.width && cursorY >= geometry.y && cursorY <= geometry.y + geometry.height){
-            console.debug(`Use cursor position ${cursorX},${cursorY}`)
-            return {x:cursorX,y:cursorY};
+        if (cursor !== null) {
+            console.debug(`Use cursor position ${cursor.x},${cursor.y}`)
+            return {x: cursor.x, y: cursor.y};
         }
 
+        const geometry = client?.clientGeometry ?? null
         if(!geometry){
             console.warn('No geometry provided')
             return {x: 0, y: 0}
@@ -234,18 +233,18 @@ export class Tiler{
         // Use the center of the window (Not sure if we even need this)
         const x: number = geometry.x + (geometry.width/2)
         const y: number = geometry.y + (geometry.height/2)
-        console.warn(`Use window center ${clientToString(client)} instead of cursor position (mouse: ${cursorX},${cursorY}, window: ${geometry.x},${geometry.y} w${geometry.width}h${geometry.height})`)
+        console.warn(`Use window center ${clientToString(client)} instead of cursor position, window: ${geometry.x},${geometry.y} w${geometry.width}h${geometry.height})`)
         return {x,y}
     }
 
     /**
      * Tile a client and retile other client.
      */
-    private tileClient(client: AbstractClient, reason: string = ''){
+    private tileClient(client: AbstractClient, reason: string = '', cursor: QPoint|null = null){
 
         this.logger.debug(`> tileClient ${clientToString(client)} (${reason})`);
 
-        this.doTile(client, 'tileClient');
+        this.doTile(client, 'tileClient', cursor);
 
         // Re-tile other windows on the same screen
         this.retileOther(client);
@@ -255,10 +254,10 @@ export class Tiler{
      * Tile a client
      * @internal
      */
-    private doTile(client: AbstractClient, reason: string = ''){
+    private doTile(client: AbstractClient, reason: string = '', cursor: QPoint|null = null){
 
         // Take the current position to find the best tile
-        const position = this.getPosition(client);
+        const position = this.getPosition(client, cursor);
 
         // Get the tiling manager from KDE
         const tileManager = workspace.tilingForScreen(workspace.activeScreen.name);

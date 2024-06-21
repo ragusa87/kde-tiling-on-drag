@@ -63,15 +63,23 @@ export class Tiler{
 
             // Calculate the outline geometry
             const position = workspace.cursorPos;
-            const tile = workspace.tilingForScreen(client.output.name)?.bestTileForPosition(position.x, position.y)
+
+            // If you drag to another screen, client.output is not always updated. So we do the calculation instead.
+            const currentScreen = workspace.screens.filter((screen) => {
+                return screen.geometry.x <= position.x &&
+                    position.x <= screen.geometry.x + screen.geometry.width &&
+                    screen.geometry.y <= position.y &&
+                    position.y <= screen.geometry.y + screen.geometry.height;
+            }).pop() ?? client.output;
+            const tile = workspace.tilingForScreen(currentScreen.name)?.bestTileForPosition(position.x, position.y)
             let outlineGeometry = tile ? tile.absoluteGeometry : null;
 
             // If we have more than one window on the screen, show the outline maximized
-            const numberOfOtherTiledWindows = this.getTiledClientsOnScreen(client.output.name).filter((otherClient: AbstractClient) => otherClient !== client).length;
-            const numberOfOtherUnTiledWindows = this.getUntiledClientOnScreen(client.output.name).filter((otherClient: AbstractClient) => otherClient !== client).length;
+            const numberOfOtherTiledWindows = this.getTiledClientsOnScreen(currentScreen.name).filter((otherClient: AbstractClient) => otherClient !== client).length;
+            const numberOfOtherUnTiledWindows = this.getUntiledClientOnScreen(currentScreen.name).filter((otherClient: AbstractClient) => otherClient !== client).length;
 
             if(numberOfOtherTiledWindows + numberOfOtherUnTiledWindows === 0 && this.config.doMaximizeSingleWindow){
-                outlineGeometry = workspace.clientArea(KWin.MaximizeArea, client.output, workspace.currentDesktop);
+                outlineGeometry = workspace.clientArea(KWin.MaximizeArea, currentScreen, workspace.currentDesktop);
             }
 
             if(outlineGeometry !== null){
@@ -239,7 +247,7 @@ export class Tiler{
         this.doTile(client, 'tileClient', cursor);
 
         // Re-tile other windows on the same screen
-        this.retileOther(client);
+        this.retileOther(client, client.tile);
     }
 
     /**
@@ -384,7 +392,7 @@ export class Tiler{
     /**
      * Re-tile other windows (so they can fit a better position due to the change of the given client)
      */
-    private retileOther(myClient: AbstractClient|null) {
+    private retileOther(myClient: AbstractClient|null, affectedTile: Tile|null = null){
         const client = myClient ?? workspace.windowList().filter(this.isSupportedClient).filter(this.isSameActivityAndDesktop).filter((client: AbstractClient) => !client.minimized)[0] ?? null;
         if(!this.config.doRearrangeWindows){
             // Minimize/maximize all windows on the screen
@@ -433,6 +441,7 @@ export class Tiler{
             freeTileOnScreens.set(screen,currentFreeTiles)
         });
 
+        // Now we have a list of all free titles, we can re-tile some window.
         // For each screen
         this.getAllScreensNames(output.name).forEach((screen: string) =>
         {
@@ -443,44 +452,49 @@ export class Tiler{
 
                 const otherClientsOnTile = this.getClientOnTile(tile);
                 // Re-tiled clients are not detected by getClientOnTile, so we need to add them manually.
-                // I don't know why Kwin does update the tile's windows list on the fly.
+                // I don't know why Kwin doesn't update the tile's windows list on the fly.
                 justRetiled.forEach((client: AbstractClient) => {
-                     if(client.tile === tile){
-                        this.logger.debug(`Add ${clientToString(client)} to otherClientsOnTile`)
-                        otherClientsOnTile.push(client);
+                     if(client.tile === tile && client.output.name === screen && !otherClientsOnTile.includes(client)){
+                         otherClientsOnTile.push(client);
                     }
                  });
 
-                const untiledClientsOnScreen = this.getUntiledClientOnScreen(screen);
 
-                this.logger.debug(`re-tile other windows. \n\tScreen: ${screen}\n\ttile: ${tileToString(tile)}\n\totherClientsOnTile: ${otherClientsOnTile.length}\n\tuntiledClientsOnScreen: ${untiledClientsOnScreen.length}`);
+                this.logger.debug(`${otherClientsOnTile.length} client(s) on tile ${tileToString(tile)}, screen ${screen}`);
 
                 // As the tile is used by more than one client, move one of them to a free tile on the same screen.
                 if (otherClientsOnTile.length > 1 && freeTileOnScreen.length > 0) {
-                    if(this.moveClientToFreeTile(client, otherClientsOnTile, freeTileOnScreen,  'otherClientsOnTile')){
-                        const usedTile = freeTileOnScreen.shift();
+                    this.logger.debug('Check crowded tile on same screen..')
+                    const usedTile =  this.moveClientToFreeTile(client, otherClientsOnTile, freeTileOnScreen,  justRetiled, affectedTile,'otherClientsOnTile');
+                    if(usedTile){
                         freeTilesOverall = freeTilesOverall.filter((tile: Tile) => tile !== usedTile);
                         return false;
                     }
                 }
+
                 // Move untiled client to a free tile if any, as we try to have all the clients tiled
+                const untiledClientsOnScreen = this.getUntiledClientOnScreen(screen);
                 if(untiledClientsOnScreen.length > 0 && freeTileOnScreen.length > 0){
-                    if(this.moveClientToFreeTile( client, untiledClientsOnScreen, freeTileOnScreen, 'untilled client')){
-                        const usedTile = freeTileOnScreen.shift();
+                    this.logger.debug('Check untiled clients on same screen..')
+                    const usedTile = this.moveClientToFreeTile( client, untiledClientsOnScreen, freeTileOnScreen, justRetiled, affectedTile,'un-tiled client');
+                    if(usedTile){
                         freeTilesOverall = freeTilesOverall.filter((tile: Tile) => tile !== usedTile);
                         return false
                     }
                 }
 
                 // As the tile is used by more than one client, move one of them to a free tile on another screen.
-                if(this.config.rearrangeBetweenMonitors && otherClientsOnTile.length > 1 && freeTilesOverall.length > 0) {
+                // But only when you are not dragging a window.
+                if(!this.isMoving && this.config.rearrangeBetweenMonitors && otherClientsOnTile.length > 1 && freeTilesOverall.length > 0) {
                     this.logger.debug('Move one client to a free tile on another screen');
-                    let oneClient = otherClientsOnTile.pop();
-                    if(oneClient === client){
-                        // The client that changed is on this tile, so we need to take another one
-                        oneClient = otherClientsOnTile.pop();
-                    }
-                    if(oneClient !== undefined) {
+                    this.logger.debug(`Free tiles: ${freeTilesOverall.map((tile: Tile) => tileToString(tile)).join('\n- ')}`)
+
+                    let oneClient: AbstractClient|null = null;
+                    do {
+                        oneClient = otherClientsOnTile.pop() ?? null;
+                    }while(oneClient === client)
+
+                    if(oneClient !== null) {
                         const oneTile = freeTilesOverall.shift() || null
                         this.logger.debug(`Move ${clientToString(oneClient)} to ${oneTile}`)
                         oneClient.tile = oneTile;
@@ -493,7 +507,7 @@ export class Tiler{
         })
 
         // Minimize/maximize all windows on the screen
-        this.getAllScreensNames(client.output.name).forEach((screen: string) => {
+        this.getAllScreensNames(client?.output?.name).forEach((screen: string) => {
             this.handleMaximizeMinimize(screen, `finished retileOther: Screen: ${screen}`);
         });
 
@@ -616,19 +630,24 @@ export class Tiler{
     /**
      * Move client to a free tile and return the used tile if any
      */
-    private moveClientToFreeTile(client: AbstractClient, otherClientsOnTile: AbstractClient[], freeTileOnScreen: Tile[], reason: string): Tile|null {
-        this.logger.debug(`Move one client from tile to a free one (${reason}). Clients on tile:\n  ${otherClientsOnTile.map((client: AbstractClient) => `  - ${clientToString(client)}`).join('\n')}\nFree tiles : ${freeTileOnScreen.map((tile: Tile) => `- ${tile.toString()}`).join(', ')})}`);
-        let clientToMove = otherClientsOnTile.pop();
-        if (clientToMove === client) {
-            clientToMove = otherClientsOnTile.pop();
-            if(clientToMove === null){
-                this.logger.debug(`Do not move ${client} as it is being tiled. No other client to move to a free tile.`)
-                return null;
-            }
-            this.logger.debug(`Skip ${clientToString(client)} as it is the one that changed, use ${clientToString(clientToMove)} instead`)
-        }
-        const freeTile = freeTileOnScreen[0] ?? null;
+    private moveClientToFreeTile(client: AbstractClient, otherClientsOnTile: AbstractClient[], freeTileOnScreen: Tile[], recentlyTiledClients: AbstractClient[], tile: Tile|null, reason: string): Tile|null {
+        this.logger.debug(`Move one client from tile to a free one (${reason})`);
+        this.debugTree()
+        let clientToMove = null
+        do{
+            const bestCandidates = recentlyTiledClients
+                .filter((recentlyTiledClient: AbstractClient) => otherClientsOnTile.includes(recentlyTiledClient) && recentlyTiledClient !== client)
+                .sort((a: AbstractClient, b: AbstractClient) => {
+                // The client is on the same tile as the window that was just re-tiled. We prioritize it
+                if(tile !== null && a.tile == tile){
+                    return -1;
+                }
+                return otherClientsOnTile.indexOf(a) - otherClientsOnTile.indexOf(b);
+            });
+            clientToMove = bestCandidates.length > 0 ? bestCandidates.pop() : otherClientsOnTile.pop();
+        }while(clientToMove === client)
 
+        const freeTile = freeTileOnScreen[0] ?? null;
         if (clientToMove && freeTile) {
             this.logger.debug(`Move ${clientToString(clientToMove)} from ${clientToMove.tile?.toString()} to ${freeTile.toString()}`);
             clientToMove.tile = freeTile;

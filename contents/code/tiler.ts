@@ -268,7 +268,12 @@ export class Tiler{
             this.logger.debug(`No tile exists for ${clientToString(client)}, maximize it instead`);
             client.frameGeometry = workspace.clientArea(KWin.MaximizeArea, client.output, workspace.currentDesktop);
         }
-        this.logger.info(`doTile: ${clientToString(client)} to ${bestTileForPosition?.toString()} (${reason}) screen ${client.output.name}`);
+        this.logger.info(`doTile: ${clientToString(client)} to ${bestTileForPosition?.toString()} (${reason}) screen ${client.output.name}. Current tile ${client.tile}`);
+
+        // The user dragged the window at the same tile as before, we need to re-tile it.
+        if(client.tile == bestTileForPosition){
+            client.tile = null;
+        }
 
         client.tile = bestTileForPosition
     }

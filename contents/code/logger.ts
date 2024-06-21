@@ -104,7 +104,7 @@ export class Console implements LoggerInterface{
             return Object.prototype.hasOwnProperty.call(context, key) ? context[key] : key;
         });
 
-        log(level, message, context);
+        log(level, `Tiling: ${message}`, context);
     }
 }
 

@@ -62,7 +62,7 @@ export class Tiler{
             const client: AbstractClient = workspace.activeWindow
 
             // Calculate the outline geometry
-            const position = this.getPosition(client, workspace.cursorPos);
+            const position = workspace.cursorPos;
             const tile = workspace.tilingForScreen(client.output.name)?.bestTileForPosition(position.x, position.y)
             let outlineGeometry = tile ? tile.absoluteGeometry : null;
 
@@ -216,14 +216,7 @@ export class Tiler{
      * Return the coordinate used to find the best tile for a window.
      * Either the cursor's position or the center of the window.
      */
-    private getPosition(client: AbstractClient|null, cursor: QPoint|null = null): QPoint{
-
-        // we are dragging the window => use the cursor's position
-        if (cursor !== null) {
-            console.debug(`Use cursor position ${cursor.x},${cursor.y}`)
-            return {x: cursor.x, y: cursor.y};
-        }
-
+    private getWindowCenter(client: AbstractClient|null): QPoint{
         const geometry = client?.clientGeometry ?? null
         if(!geometry){
             console.warn('No geometry provided')
@@ -233,7 +226,6 @@ export class Tiler{
         // Use the center of the window (Not sure if we even need this)
         const x: number = geometry.x + (geometry.width/2)
         const y: number = geometry.y + (geometry.height/2)
-        console.warn(`Use window center ${clientToString(client)} instead of cursor position, window: ${geometry.x},${geometry.y} w${geometry.width}h${geometry.height})`)
         return {x,y}
     }
 
@@ -257,7 +249,7 @@ export class Tiler{
     private doTile(client: AbstractClient, reason: string = '', cursor: QPoint|null = null){
 
         // Take the current position to find the best tile
-        const position = this.getPosition(client, cursor);
+        const position = cursor ?? this.getWindowCenter(client);
 
         // Get the tiling manager from KDE
         const tileManager = workspace.tilingForScreen(workspace.activeScreen.name);

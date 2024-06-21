@@ -284,7 +284,7 @@ export class Tiler{
     /**
      * Return all available tiles for the given screens (except the root tiles)
      */
-    private getAllTiles(...screens: string[]): Tile[]{
+    private getAllTiles(screens: string[], removeRoot: boolean = true): Tile[]{
         let tiles: Tile[] = [];
         screens.forEach((screen: string) => {
             const tileManager = workspace.tilingForScreen(screen);
@@ -319,12 +319,12 @@ export class Tiler{
 
             // Remove root tile
             tiles = tiles.filter((tile: Tile) => {
-                return tile !== root;
+                return tile !== root || ! removeRoot;
             })
 
             // Keep only tiles without sub-tiles
             tiles = tiles.filter((tile: Tile) => {
-                return tile.tiles.length ===  0;
+                return tile.tiles.length ===  0 || tile === root;
             })
 
         });
@@ -427,7 +427,7 @@ export class Tiler{
         this.getAllScreensNames(output.name).forEach((screen: string) => {
             const currentFreeTiles : Tile[] = []
             freeTileOnScreens.set(screen, currentFreeTiles);
-            this.getAllTiles(screen).forEach((tile: Tile) => {
+            this.getAllTiles([screen]).forEach((tile: Tile) => {
                 if (tile.windows.filter(this.isSupportedClient).filter((client: AbstractClient) => !client.minimized).length === 0) {
                     currentFreeTiles.push(tile);
                     freeTilesOverall.push(tile);
@@ -451,7 +451,7 @@ export class Tiler{
         {
             const freeTileOnScreen = freeTileOnScreens.get(screen) ?? [];
             // Move stacked window to a free tile if any
-            this.getAllTiles(screen).every((tile: Tile) => {
+            this.getAllTiles([screen]).every((tile: Tile) => {
                 const otherClientsOnTile = this.getClientOnTile(tile);
                 // Re-tiled clients are not detected by getClientOnTile, so we need to add them manually.
                 // I don't know why Kwin doesn't update the tile's windows list on the fly.
@@ -512,7 +512,6 @@ export class Tiler{
         this.getAllScreensNames(client.output.name).forEach((screen: string) => {
             this.handleMaximizeMinimize(screen, `finished retileOther: Screen: ${screen}`);
         });
-
         // Output the client's list if the option is enabled
         this.debugTree()
     }
@@ -576,11 +575,11 @@ export class Tiler{
         const tab3 = tab2 + tab;
         const tab4 = tab3 + tab;
         this.getAllScreensNames(workspace.activeScreen.name).forEach((screen: string) => {
-            output += `screen ${screen} - tiled: ${this.getTiledClientsOnScreen(screen).length} untiled: ${this.getUntiledClientOnScreen(screen).length} number of tiles: ${this.getAllTiles(screen).length} \n`;
+            output += `screen ${screen} - tiled: ${this.getTiledClientsOnScreen(screen).length} untiled: ${this.getUntiledClientOnScreen(screen).length} number of tiles: ${this.getAllTiles([screen]).length} \n`;
             if(this.getUntiledClientOnScreen(screen).length > 0) {
-                output += `${tab2} - untiled:\n${this.getUntiledClientOnScreen(screen).map((client: AbstractClient) => `${tab3} - ${clientToString(client)}`).join(', ')}\n`;
+                output += `${tab2} - untiled:\n${this.getUntiledClientOnScreen(screen).map((client: AbstractClient) => `${tab4} - ${clientToString(client)}`).join(', ')}\n`;
             }
-            this.getAllTiles(screen).forEach((tile: Tile) => {
+            this.getAllTiles([screen], false).forEach((tile: Tile) => {
                 output += (`${tab2} -  ${tileToString(tile)} clients: ${this.getClientOnTile(tile).length} (un-filtered ${tile.windows.length})\n`)
                 this.getClientOnTile(tile).forEach((client: AbstractClient) => {
                     output += (`${tab4} * ${clientToString(client)}\n`);

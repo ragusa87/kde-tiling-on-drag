@@ -482,14 +482,17 @@ export class Tiler{
                 }
 
                 // As the tile is used by more than one client, move one of them to a free tile on another screen.
-                if(this.config.rearrangeBetweenMonitors && otherClientsOnTile.length > 1 && freeTilesOverall.length > 0) {
+                // But only when you are not dragging a window.
+                if(!this.isMoving && this.config.rearrangeBetweenMonitors && otherClientsOnTile.length > 1 && freeTilesOverall.length > 0) {
                     this.logger.debug('Move one client to a free tile on another screen');
-                    let oneClient = otherClientsOnTile.pop();
-                    if(oneClient === client){
-                        // The client that changed is on this tile, so we need to take another one
-                        oneClient = otherClientsOnTile.pop();
-                    }
-                    if(oneClient !== undefined) {
+                    this.logger.debug(`Free tiles: ${freeTilesOverall.map((tile: Tile) => tileToString(tile)).join('\n- ')}`)
+
+                    let oneClient: AbstractClient|null = null;
+                    do {
+                        oneClient = otherClientsOnTile.pop() ?? null;
+                    }while(oneClient === client)
+
+                    if(oneClient !== null) {
                         const oneTile = freeTilesOverall.shift() || null
                         this.logger.debug(`Move ${clientToString(oneClient)} to ${oneTile}`)
                         oneClient.tile = oneTile;

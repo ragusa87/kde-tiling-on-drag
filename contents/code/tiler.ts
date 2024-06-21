@@ -53,9 +53,14 @@ export class Tiler{
             this.retileOther(workspace.activeWindow)
         }
 
+        /**
+         * Show a window outline while moving a window (as when the user is pressing shift)
+         * @param geometry
+         */
         this.interactiveMoveResizeStepped = (geometry: QRect) => {
-            this.event( `interactiveMoveResizeStepped with geometry: ${geometry}`)
+            // This event is triggered when the user is moving a window
             this.isMoving = true;
+
             if(!this.config.doShowOutline || workspace.activeWindow === null){
                 return
             }
@@ -82,20 +87,23 @@ export class Tiler{
         };
 
         this.minimizedChanged = () => {
-            // TODO workspace.activeWindow is null when we minimize a window..
             this.event( `minimizedChanged: ${clientToString(workspace.activeWindow)} ${workspace.activeWindow?.minimized ? 'minimized' : 'unminimized'}`)
 
-            // Use the last activated window when there is no active window
+            // workspace.activeWindow is null when we minimize a window
+            // we use the last activated window instead
             let window = workspace.activeWindow
             if(window === null && this.lastWindowActivated !== null){
                const clients = workspace.windowList().filter((client) => client === this.lastWindowActivated)
                 window = clients.length > 0 ? clients[0] : window
             }
 
+            // We retile window when whe minimize one
             if(window === null || window.minimized || workspace.activeWindow === null) {
                 this.retileOther(window)
                 return
             }
+
+            // We retile window when we un-minimize one
             this.tileClient(workspace.activeWindow, 'Unminimized')
         }
 
@@ -425,6 +433,7 @@ export class Tiler{
 
             // Update the list of free tiles on the screen, given that justRetiled windows are not yet pushed to the tile's windows list.
             justRetiled.forEach((retiledClient: AbstractClient) => {
+                // Remove retiledClient's tile from the free titles.
                 if (retiledClient.tile) {
                     currentFreeTiles.indexOf(retiledClient.tile) !== -1 && currentFreeTiles.splice(currentFreeTiles.indexOf(retiledClient.tile), 1);
                     freeTilesOverall.indexOf(retiledClient.tile) !== -1 && freeTilesOverall.splice(freeTilesOverall.indexOf(retiledClient.tile), 1);
@@ -440,8 +449,6 @@ export class Tiler{
             const freeTileOnScreen = freeTileOnScreens.get(screen) ?? [];
             // Move stacked window to a free tile if any
             this.getAllTiles(screen).every((tile: Tile) => {
-                this.logger.debug(`re-tile other windows. \n\tScreen: ${screen}\n\ttile: ${tileToString(tile)}`);
-
                 const otherClientsOnTile = this.getClientOnTile(tile);
                 // Re-tiled clients are not detected by getClientOnTile, so we need to add them manually.
                 // I don't know why Kwin doesn't update the tile's windows list on the fly.
@@ -635,6 +642,8 @@ export class Tiler{
             this.forceRedraw(freeTile);
             return freeTile
         }
+
+        this.logger.debug(`No candidate found to free tile to a free one (${freeTile?.toString() ?? 'No free titles'})`);
         return null;
     }
 

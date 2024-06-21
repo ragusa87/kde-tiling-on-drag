@@ -219,7 +219,11 @@ export class Tiler{
         }
 
         client.tile = null;
-        this.retileOtherDeferred(client, null);
+
+        // Just handle minimize/maximize without retiling
+        this.getAllScreensNames(client?.output?.name).forEach((screen: string) => {
+            this.handleMaximizeMinimize(screen, `finished retileOther: Screen: ${screen}`);
+        });
     }
 
     /**

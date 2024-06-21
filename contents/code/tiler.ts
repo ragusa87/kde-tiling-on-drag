@@ -55,9 +55,8 @@ export class Tiler{
 
         /**
          * Show a window outline while moving a window (as when the user is pressing shift)
-         * @param geometry
          */
-        this.interactiveMoveResizeStepped = (geometry: QRect) => {
+        this.interactiveMoveResizeStepped = () => {
             // This event is triggered when the user is moving a window
             this.isMoving = true;
 

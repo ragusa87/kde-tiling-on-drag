@@ -433,6 +433,7 @@ export class Tiler{
             freeTileOnScreens.set(screen,currentFreeTiles)
         });
 
+        // Now we have a list of all free titles, we can re-tile some window.
         // For each screen
         this.getAllScreensNames(output.name).forEach((screen: string) =>
         {
@@ -443,11 +444,10 @@ export class Tiler{
 
                 const otherClientsOnTile = this.getClientOnTile(tile);
                 // Re-tiled clients are not detected by getClientOnTile, so we need to add them manually.
-                // I don't know why Kwin does update the tile's windows list on the fly.
+                // I don't know why Kwin doesn't update the tile's windows list on the fly.
                 justRetiled.forEach((client: AbstractClient) => {
-                     if(client.tile === tile){
-                        this.logger.debug(`Add ${clientToString(client)} to otherClientsOnTile`)
-                        otherClientsOnTile.push(client);
+                     if(client.tile === tile && client.output.name === screen && !otherClientsOnTile.includes(client)){
+                         otherClientsOnTile.push(client);
                     }
                  });
 

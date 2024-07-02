@@ -4,7 +4,7 @@ export function clientToString(client: AbstractClient|undefined|null):string{
     if(!client){
         return 'null'
     }
-    return `${client.resourceName} ${client.internalId}`;
+    return `${client.resourceName} ${client.caption} (${client.internalId})`;
 }
 
 export function tileToString(tile: Tile|undefined|null):string{

@@ -276,9 +276,10 @@ export class Tiler{
         const tileManager = workspace.tilingForScreen(workspace.activeScreen.name);
 
         // Ask where is the best location for this current window and assign it to the client.
-        const bestTileForPosition = tileManager.bestTileForPosition(position.x, position.y);
+        let bestTileForPosition = tileManager.bestTileForPosition(position.x, position.y);
         if(bestTileForPosition === null && this.config.doMaximizeWhenNoLayoutExists){
-            this.logger.debug(`No tile exists for ${clientToString(client)}, maximize it instead`);
+            this.logger.debug(`No tile exists for ${clientToString(client)}, use root tile to maximize the window`);
+            bestTileForPosition = tileManager.rootTile;
             client.frameGeometry = workspace.clientArea(KWin.MaximizeArea, client.output, workspace.currentDesktop);
         }
         this.logger.info(`doTile: ${clientToString(client)} to ${bestTileForPosition?.toString()} (${reason}) screen ${client.output.name}. Current tile ${client.tile}`);
@@ -404,7 +405,7 @@ export class Tiler{
 
         }
 
-        client.tile = null;
+        client.tile = workspace.tilingForScreen(client.output.name)?.rootTile
         client.frameGeometry = workspace.clientArea(KWin.MaximizeArea, client.output, workspace.currentDesktop);
     }
 
@@ -430,7 +431,7 @@ export class Tiler{
             .filter(this.isSupportedClient)
             .filter(this.isSameActivityAndDesktop)
             .filter((otherClient) => !otherClient.minimized)
-            .filter((otherClient: AbstractClient) => otherClient.tile === null)
+            .filter((otherClient: AbstractClient) => otherClient.tile === null || otherClient.tile.parent === null)
             .forEach((otherClient: AbstractClient) => {
                 this.doTile(otherClient, 'retileOther: Untiled windows'); // We skip the client that changed
                 justRetiled.push(otherClient);
@@ -547,7 +548,7 @@ export class Tiler{
      */
     private getUntiledClientOnScreen(screen: string) {
         return workspace.windowList().filter(this.isSupportedClient).filter(this.isSameActivityAndDesktop).filter((client: AbstractClient) => {
-            return client.output.name === screen && client.tile === null && !client.minimized;
+            return client.output.name === screen && (client.tile === null || client.tile.parent === null) && !client.minimized;
         })
     }
 
@@ -563,7 +564,7 @@ export class Tiler{
         }
 
         // Force a tile so unmaximize will work
-        if(client.tile === null){
+        if(client.tile === null || client.tile.parent === null){
             this.doLogIf(this.config.logMaximize, LogLevel.WARNING, `Force tiling an untiled window ${clientToString(client)}`)
             this.doTile(client, 'unmaximize without tile');
         }
@@ -704,7 +705,7 @@ export class Tiler{
     }
 
     private forceRedraw(tile: Tile|null) {
-        if(tile === null || !this.config.doForceRedraw) {
+        if(tile === null || !this.config.doForceRedraw || tile.parent === null) {
             return;
         }
 

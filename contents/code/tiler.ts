@@ -255,10 +255,12 @@ export class Tiler{
 
         this.logger.debug(`> tileClient ${clientToString(client)} (${reason})`);
 
-        this.doTile(client, 'tileClient', cursor);
+        const doRetileOther = this.doTile(client, 'tileClient', cursor);
 
         // Re-tile other windows on the same screen
-        this.retileOther(client, client.tile);
+        if(doRetileOther) {
+            this.retileOther(client, client.tile);
+        }
     }
 
     /**
@@ -283,10 +285,16 @@ export class Tiler{
 
         // The user dragged the window at the same tile as before, we need to re-tile it.
         if(client.tile == bestTileForPosition){
+            client.frameGeometry.x += 1
+            client.frameGeometry.x -= 1
             client.tile = null;
+            client.tile = bestTileForPosition;
+            return false;
         }
 
         client.tile = bestTileForPosition
+
+        return true;
     }
 
     /**

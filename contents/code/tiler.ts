@@ -67,7 +67,15 @@ export class Tiler{
 
             // Calculate the outline geometry
             const position = workspace.cursorPos;
-            const tile = workspace.tilingForScreen(client.output.name)?.bestTileForPosition(position.x, position.y)
+
+            // If you drag to another screen, client.output is not always updated. So we do the calculation instead.
+            const currentScreen = workspace.screens.filter((screen) => {
+                return screen.geometry.x >= position.x &&
+                    screen.geometry.width + screen.geometry.x < position.x &&
+                    screen.geometry.y >= position.y &&
+                    screen.geometry.height + screen.geometry.y < position.y
+            }).pop() ?? client.output;
+            const tile = workspace.tilingForScreen(currentScreen.name)?.bestTileForPosition(position.x, position.y)
             let outlineGeometry = tile ? tile.absoluteGeometry : null;
 
             // If we have more than one window on the screen, show the outline maximized

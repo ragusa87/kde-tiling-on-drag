@@ -40,7 +40,7 @@ jobs:
         run: make build
 
       - name: Create Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: kde-tiling-on-drag.kwinscript
           path: |
@@ -57,7 +57,7 @@ jobs:
           fetch-depth: 0
 
       - name: Download the artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: kde-tiling-on-drag.kwinscript
 
@@ -99,7 +99,7 @@ jobs:
         run: ls -la
 
       - name: Create Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: release
           path: |

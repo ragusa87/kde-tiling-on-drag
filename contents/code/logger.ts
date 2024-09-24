@@ -100,9 +100,14 @@ export class Console implements LoggerInterface{
         }
 
         // Replace placeholders {} in message
-        message = message.replace(/{\w+}/g, function(key: string) {
-            return Object.prototype.hasOwnProperty.call(context, key) ? context[key] : key;
+        message = message.replace(/{(\w+)}/g, function(match: string, key: string) {
+            return Object.prototype.hasOwnProperty.call(context, key) ? context[key] : match;
         });
+
+        if(Object.keys(context).length === 0) {
+            log(level, `Tiling: ${message}`);
+            return;
+        }
 
         log(level, `Tiling: ${message}`, context);
     }

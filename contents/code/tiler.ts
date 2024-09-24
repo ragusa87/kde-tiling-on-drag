@@ -267,7 +267,7 @@ export class Tiler{
         const position = cursor ?? this.getWindowCenter(client);
 
         // Get the tiling manager from KDE
-        const tileManager = workspace.tilingForScreen(workspace.activeScreen.name);
+        const tileManager = workspace.tilingForScreen(client.output.name);
 
         // Ask where is the best location for this current window and assign it to the client.
         const bestTileForPosition = tileManager.bestTileForPosition(position.x, position.y);

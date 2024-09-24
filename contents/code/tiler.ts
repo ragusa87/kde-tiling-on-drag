@@ -20,13 +20,14 @@ export class Tiler{
     interactiveMoveResizeFinished: () => void;
     interactiveMoveResizeStepped: () => void;
     clientScreenChangedListener: () => void;
-    minimizedChanged: () => void;
+    minimizedChanged: (myClient: AbstractClient) => void;
     retileOtherDeferred: (myClient: AbstractClient|null, affectedTile: Tile|null) => void;
     lastWindowActivated: AbstractClient|null = null
     isMoving: boolean = false; // True if the user is moving a window (set by interactiveMoveResizeStepped/interactiveMoveResizeFinished)
+    minimizedChangedHandlers: Map<AbstractClient, () => void>;
     constructor(config: Config){
         this.config = config;
-
+        this.minimizedChangedHandlers = new Map<AbstractClient, () => void>();
         this.logger = new Console(LogLevel.DEBUG)
         this.shortcuts = new ShortcutManager();
         this.shortcuts.apply()
@@ -98,25 +99,17 @@ export class Tiler{
             }
         };
 
-        this.minimizedChanged = () => {
-            this.event( `minimizedChanged: ${clientToString(workspace.activeWindow)} ${workspace.activeWindow?.minimized ? 'minimized' : 'unminimized'}`)
+        this.minimizedChanged = (client: AbstractClient) => {
+            this.event( `minimizedChanged: ${clientToString(client)} ${client.minimized ? 'minimized' : 'unminimized'}`)
 
-            // workspace.activeWindow is null when we minimize a window
-            // we use the last activated window instead
-            let window = workspace.activeWindow
-            if(window === null && this.lastWindowActivated !== null){
-               const clients = workspace.windowList().filter((client) => client === this.lastWindowActivated)
-                window = clients.length > 0 ? clients[0] : window
-            }
 
-            // We retile window when whe minimize one
-            if(window === null || window.minimized || workspace.activeWindow === null) {
-                this.retileOther(window)
+            if(client.minimized){
+                this.handleMaximizeMinimize(client.output.name, 'minimized')
                 return
             }
 
             // We retile window when we un-minimize one
-            this.tileClient(workspace.activeWindow, 'Unminimized')
+            this.tileClient(client, 'Unminimized')
         }
 
         // Log properties at startup
@@ -203,7 +196,11 @@ export class Tiler{
         client.interactiveMoveResizeFinished.connect(this.interactiveMoveResizeFinished);
         client.interactiveMoveResizeStepped.connect(this.interactiveMoveResizeStepped);
         client.outputChanged.connect(this.clientScreenChangedListener);
-        client.minimizedChanged.connect(this.minimizedChanged);
+
+        const minimizedChangedHandler = () => this.minimizedChanged(client);
+        this.minimizedChangedHandlers.set(client, minimizedChangedHandler);
+        client.minimizedChanged.connect(minimizedChangedHandler);
+
         this.tileClient(client, 'attachClient');
     }
 
@@ -215,7 +212,7 @@ export class Tiler{
         client.interactiveMoveResizeFinished.disconnect(this.interactiveMoveResizeFinished);
         client.interactiveMoveResizeStepped.disconnect(this.interactiveMoveResizeStepped);
         client.outputChanged.disconnect(this.clientScreenChangedListener);
-        client.minimizedChanged.disconnect(this.minimizedChanged);
+        client.minimizedChanged.disconnect(this.minimizedChangedHandlers.get(client) ?? (() => {}));
 
         if(this.lastWindowActivated === client){
             this.lastWindowActivated = null;

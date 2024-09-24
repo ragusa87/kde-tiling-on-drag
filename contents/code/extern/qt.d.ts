@@ -43,6 +43,7 @@ interface QTimerInterface {
     interval: number;
     repeat: boolean;
     running: boolean;
+    active: boolean;
     triggeredOnStart: boolean;
     triggered: Signal<() => void>;
     restart(): void;

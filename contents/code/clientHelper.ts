@@ -47,6 +47,37 @@ export function isSameActivityAndDesktop(client: AbstractClient):boolean{
         (client.activities.length === 0 || client.activities.includes(workspace.currentActivity));
 }
 
+// Debounce function with QTimer in TypeScript
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export function debounce<T extends (...args: any[]) => void>(func: T, wait: number): (...args: Parameters<T>) => void {
+    // Create the QTimer instance
+    const timer: QTimerInterface = new QTimer();
+    timer.singleShot = true; // Set the timer to single-shot mode
+
+    let debouncedCallback: (() => void) | null = null;
+
+    return function(...args: Parameters<T>){
+        // If the timer is already active (running), stop it
+        if (timer.active) {
+            timer.stop();
+        }
+
+        if (debouncedCallback !== null) {
+            timer.timeout.disconnect(debouncedCallback);
+        }
+
+        // Create a new closure to capture the current arguments
+        debouncedCallback = () => {
+            func(...args);  // Execute the debounced function with the provided arguments
+        };
+
+        timer.timeout.connect(debouncedCallback);
+
+        // Start the timer, which will trigger `func` after the `wait` time
+        timer.start(wait);
+    };
+}
+
 
 export function clientProperties (client: AbstractClient):string{
        return `> properties for ${clientToString(client)}

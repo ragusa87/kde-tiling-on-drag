@@ -7,9 +7,10 @@ import {
     isSameActivityAndDesktop,
     isSupportedClient,
     tileToString,
-    point
+    point,
+    debounce
 } from './clientHelper';
-import {cancelTimeout, setTimeout} from './timeout';
+
 import {ShortcutManager} from './shortcuts';
 
 export class Tiler{
@@ -18,9 +19,9 @@ export class Tiler{
     shortcuts: ShortcutManager;
     interactiveMoveResizeFinished: () => void;
     interactiveMoveResizeStepped: () => void;
-    private timer: QTimerInterface|null = null;
     clientScreenChangedListener: () => void;
     minimizedChanged: () => void;
+    retileOtherDeferred: (myClient: AbstractClient|null, affectedTile: Tile|null) => void;
     lastWindowActivated: AbstractClient|null = null
     isMoving: boolean = false; // True if the user is moving a window (set by interactiveMoveResizeStepped/interactiveMoveResizeFinished)
     constructor(config: Config){
@@ -50,8 +51,12 @@ export class Tiler{
                 this.logger.warn('clientScreenChangedListener: workspace.activeWindow is null');
                 return;
             }
-            this.retileOther(workspace.activeWindow)
-        }
+            this.retileOtherDeferred(workspace.activeWindow, null)
+        };
+
+        this.retileOtherDeferred = debounce((myClient: AbstractClient|null, affectedTile: Tile|null = null) => {
+            this.retileOther(myClient, affectedTile);
+        }, 50);
 
         /**
          * Show a window outline while moving a window (as when the user is pressing shift)
@@ -166,17 +171,10 @@ export class Tiler{
                 this.logger.warn(`No root tile for screen ${screen} ??`);
                 return
             }
-            workspace.tilingForScreen(screen).rootTile.layoutModified.connect(() => {
-                // defer execution to avoid multiple calls on tile resizing
-                if(this.timer !== null){
-                    cancelTimeout(this.timer);
-                }
-                this.timer = setTimeout(() =>{
+            workspace.tilingForScreen(screen).rootTile.layoutModified.connect(debounce(() => {
                     this.event(`layoutModified on screen: ${screen}`)
                     this.handleMaximizeMinimize(screen, 'layoutModified')
-
-                }, 1000)
-            });
+            }, 50));
         });
     }
     /**
@@ -224,7 +222,7 @@ export class Tiler{
         }
 
         client.tile = null;
-        this.retileOther(client);
+        this.retileOtherDeferred(client, null);
     }
 
     /**
@@ -254,7 +252,7 @@ export class Tiler{
         this.doTile(client, 'tileClient', cursor);
 
         // Re-tile other windows on the same screen
-        this.retileOther(client, client.tile);
+        this.retileOtherDeferred(client, client.tile);
     }
 
     /**

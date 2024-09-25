@@ -89,7 +89,7 @@ export class Tiler{
             const numberOfOtherUnTiledWindows = this.getUntiledClientOnScreen(currentScreen.name).filter((otherClient: AbstractClient) => otherClient !== client).length;
 
             if(numberOfOtherTiledWindows + numberOfOtherUnTiledWindows === 0 && this.config.doMaximizeSingleWindow){
-                outlineGeometry = workspace.clientArea(KWin.MaximizeArea, currentScreen, workspace.currentDesktop);
+                outlineGeometry = this.padGeometry(workspace.clientArea(KWin.MaximizeArea, currentScreen, workspace.currentDesktop), currentScreen.name);
             }
 
             if(outlineGeometry !== null){
@@ -268,7 +268,7 @@ export class Tiler{
         const bestTileForPosition = tileManager.bestTileForPosition(position.x, position.y);
         if(bestTileForPosition === null && this.config.doMaximizeWhenNoLayoutExists){
             this.logger.debug(`No tile exists for ${clientToString(client)}, maximize it instead`);
-            client.frameGeometry = workspace.clientArea(KWin.MaximizeArea, client.output, workspace.currentDesktop);
+            client.frameGeometry = this.padGeometry(workspace.clientArea(KWin.MaximizeArea, client.output, workspace.currentDesktop), client.output.name);
         }
         this.logger.info(`doTile: ${clientToString(client)} to ${bestTileForPosition?.toString()} (${reason}) screen ${client.output.name}. Current tile ${client.tile}`);
 
@@ -388,7 +388,8 @@ export class Tiler{
         }
 
         client.tile = null;
-        client.frameGeometry = workspace.clientArea(KWin.MaximizeArea, client.output, workspace.currentDesktop);
+
+        client.frameGeometry = this.padGeometry(workspace.clientArea(KWin.MaximizeArea, client.output, workspace.currentDesktop), client.output.name);
     }
 
     /**
@@ -696,5 +697,15 @@ export class Tiler{
         tile.moveByPixels(point(-1, 0));
         //  tile.padding += 1;
         //  tile.padding -= 1;
+    }
+
+    private padGeometry(geometry: QRect, currentScreen: string) {
+        const padding = this.config.maximizeWithPadding ? (workspace.tilingForScreen(currentScreen)?.rootTile?.padding ?? 0) : 0;
+        return {
+            x: geometry.x + padding,
+            y: geometry.y + padding,
+            width: geometry.width - 2 * padding,
+            height: geometry.height - 2 * padding
+        }
     }
 }

@@ -35,6 +35,11 @@ export class Config {
         return this;
     }
 
+    setMaximizeWithPadding(value: boolean):Config{
+        this.maximizeWithPadding = value;
+        return this
+    }
+
     logLevel: LogLevel;
     logMaximize: boolean;
     logEvents: boolean;
@@ -47,4 +52,6 @@ export class Config {
     rearrangeBetweenMonitors: boolean = false;
     doForceRedraw: boolean = false;
     doRearrangeWindows: boolean = true;
+    maximizeWithPadding: boolean = true;
+
 }

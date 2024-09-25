@@ -9,6 +9,7 @@ config
     .setRearrangeBetweenMonitors(readConfig('rearrangeBetweenMonitors', false))
     .setMaximizeSingleWindow(readConfig('maximizeSingleWindow', true))
     .setRearrangeWindows(readConfig('rearrangeWindows', true))
+    .setMaximizeWithPadding(readConfig('maximizeWithPadding', true))
 
 console.log(`Tiling started with debug: ${isDebug}`)
 new Tiler(config);

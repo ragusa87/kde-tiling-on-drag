@@ -213,6 +213,7 @@ export class Tiler{
         client.interactiveMoveResizeStepped.disconnect(this.interactiveMoveResizeStepped);
         client.outputChanged.disconnect(this.clientScreenChangedListener);
         client.minimizedChanged.disconnect(this.minimizedChangedHandlers.get(client) ?? (() => {}));
+        this.minimizedChangedHandlers.delete(client)
 
         if(this.lastWindowActivated === client){
             this.lastWindowActivated = null;

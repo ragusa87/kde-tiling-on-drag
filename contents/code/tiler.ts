@@ -82,7 +82,7 @@ export class Tiler{
                     position.y <= screen.geometry.y + screen.geometry.height;
             }).pop() ?? client.output;
             const tile = workspace.tilingForScreen(currentScreen.name)?.bestTileForPosition(position.x, position.y)
-            let outlineGeometry = tile ? tile.absoluteGeometry : null;
+            let outlineGeometry = tile ? this.getWindowGeometry(tile, currentScreen.name) : null;
 
             // If we have more than one window on the screen, show the outline maximized
             const numberOfOtherTiledWindows = this.getTiledClientsOnScreen(currentScreen.name).filter((otherClient: AbstractClient) => otherClient !== client).length;
@@ -170,6 +170,64 @@ export class Tiler{
             }, 50));
         });
     }
+    private hasTileOnDirection(tile: Tile, screenName: string, direction: string): boolean {
+        const geometry = tile.absoluteGeometry;
+        const padding = workspace.tilingForScreen(screenName).rootTile.padding;
+    
+        let position = { x: geometry.x, y: geometry.y };
+    
+        switch (direction) {
+            case "left":
+                // Move position to the left of the tile's width and padding
+                position = { x: geometry.x - (geometry.width + padding), y: geometry.y };
+                break;
+            case "right":
+                // Move position to the right of the tile's width and padding
+                position = { x: geometry.x + geometry.width + padding, y: geometry.y };
+                break;
+            case "top":
+                // Move position upwards by the height and padding
+                position = { x: geometry.x, y: geometry.y - (geometry.height + padding) };
+                break;
+            case "bottom":
+                // Move position downwards by the height and padding
+                position = { x: geometry.x, y: geometry.y + geometry.height + padding };
+                break;
+        }
+    
+        // Check if there is a tile at the calculated position
+        const nextTile = workspace.tilingForScreen(screenName).bestTileForPosition(position.x, position.y);
+    
+        return nextTile != null && nextTile !== tile;
+    }
+
+    // TODO DEBUG THIS
+    private getWindowGeometry(tile: Tile, screenName: string): QRect{
+        
+        const geometry = tile.absoluteGeometry;
+        const padding = workspace.tilingForScreen(screenName).rootTile.padding;
+
+        
+        const isOnLeft = !this.hasTileOnDirection(tile, screenName, "left")
+        const isOnTop = !this.hasTileOnDirection(tile, screenName,  "top");
+        const isOnRight = !this.hasTileOnDirection(tile, screenName,  "right");
+        const isOnBottom = !this.hasTileOnDirection(tile, screenName,  "bottom");
+
+
+        // Apply half padding between tiles and full against the screen edges
+        const pLeft = isOnLeft ? padding / 2.0 : padding;
+        const pTop = isOnTop ? padding / 2.0 : padding;
+        const pRight = isOnRight ? padding : padding / 2.0;
+        const pBottom = isOnBottom ? padding : padding / 2.0;
+        this.logger.debug(`tilte t: ${isOnTop} r: ${isOnRight} b: ${isOnBottom} l: ${isOnLeft}`)
+        return {
+            x: geometry.x + pLeft,
+            y: geometry.y + pTop,
+            width: geometry.width - (pLeft + pRight),  
+            height: geometry.height - (pTop + pBottom)
+        };
+    }
+
     /**
      * Filter client to be on the same activity and desktop
      */
@@ -700,13 +758,13 @@ export class Tiler{
         //  tile.padding -= 1;
     }
 
-    private padGeometry(geometry: QRect, currentScreen: string) {
+    private padGeometry(geometry: QRect, currentScreen: string, ratio: number = 2) {
         const padding = this.config.maximizeWithPadding ? (workspace.tilingForScreen(currentScreen)?.rootTile?.padding ?? 0) : 0;
         return {
             x: geometry.x + padding,
             y: geometry.y + padding,
-            width: geometry.width - 2 * padding,
-            height: geometry.height - 2 * padding
+            width: geometry.width - ratio * padding,
+            height: geometry.height - ratio * padding
         }
     }
 }

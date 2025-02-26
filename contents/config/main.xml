@@ -29,6 +29,9 @@
         <entry name="rearrangeWindows" type="bool">
             <default>true</default>
         </entry>
+        <entry name="rearrangeLayout" type="bool">
+            <default>false</default>
+        </entry>
     </group>
 
 </kcfg>

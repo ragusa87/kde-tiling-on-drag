@@ -10,6 +10,7 @@ config
     .setMaximizeSingleWindow(readConfig('maximizeSingleWindow', true))
     .setRearrangeWindows(readConfig('rearrangeWindows', true))
     .setMaximizeWithPadding(readConfig('maximizeWithPadding', true))
+    .setRearrangeLayout(readConfig('rearrangeLayout', false))
 
 console.log(`Tiling started with debug: ${isDebug}`)
 new Tiler(config);

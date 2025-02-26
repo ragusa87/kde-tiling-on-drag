@@ -5,9 +5,10 @@ export class Config {
     }
     constructor(debug: boolean = false) {
         this.logLevel = debug ? LogLevel.DEBUG: LogLevel.NOTICE;
-        this.logMaximize = debug
+        this.logMaximize = false
         this.logDebugTree = debug
-        this.logEvents = debug
+        this.logEvents = false
+        this.logRearrangeLayout = debug
     }
 
     setLogWindowProperties(value: boolean):Config{
@@ -40,6 +41,15 @@ export class Config {
         return this
     }
 
+    getRearrangeLayout(): boolean {
+        return this.rearrangeLayout;
+    }
+
+    setRearrangeLayout(value: boolean):Config {
+        this.rearrangeLayout = value;
+        return this
+    }
+
     logLevel: LogLevel;
     logMaximize: boolean;
     logEvents: boolean;
@@ -50,8 +60,10 @@ export class Config {
     doMaximizeWhenNoLayoutExists: boolean = true;
     doShowOutline: boolean = true;
     rearrangeBetweenMonitors: boolean = false;
+    rearrangeLayout: boolean = false;
     doForceRedraw: boolean = false;
     doRearrangeWindows: boolean = true;
     maximizeWithPadding: boolean = true;
+    logRearrangeLayout: boolean = true;
 
 }

@@ -444,8 +444,11 @@ export class Tiler{
             justRetiled.forEach((retiledClient: AbstractClient) => {
                 // Remove retiledClient's tile from the free titles.
                 if (retiledClient.tile) {
-                    currentFreeTiles.indexOf(retiledClient.tile) !== -1 && currentFreeTiles.splice(currentFreeTiles.indexOf(retiledClient.tile), 1);
-                    freeTilesOverall.indexOf(retiledClient.tile) !== -1 && freeTilesOverall.splice(freeTilesOverall.indexOf(retiledClient.tile), 1);
+                    if(currentFreeTiles.indexOf(retiledClient.tile) !== -1)
+                        currentFreeTiles.splice(currentFreeTiles.indexOf(retiledClient.tile), 1);
+
+                    if(freeTilesOverall.indexOf(retiledClient.tile) !== -1)
+                        freeTilesOverall.splice(freeTilesOverall.indexOf(retiledClient.tile), 1);
                 }
             });
             freeTileOnScreens.set(screen,currentFreeTiles)

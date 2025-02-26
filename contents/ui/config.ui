@@ -82,7 +82,7 @@
    <item row="8" column="0">
     <widget class="QCheckBox" name="kcfg_rearrangeLayout">
      <property name="text">
-      <string>Rearange KDE Layout base on the amount of windows</string>
+      <string>Rearrange KDE Layout based on the amount of windows</string>
      </property>
     </widget>
    </item>

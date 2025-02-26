@@ -1,10 +1,12 @@
 {
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^25.0.5",
-    "@typescript-eslint/eslint-plugin": "^6.7.2",
-    "@typescript-eslint/parser": "^6.7.2",
-    "eslint": "^8.49.0",
-    "typescript": "^5.2.2"
+    "@eslint/eslintrc": "^3.3.0",
+    "@eslint/js": "^9.21.0",
+    "@rollup/plugin-commonjs": "^28.0.2",
+    "@typescript-eslint/eslint-plugin": "^8.25.0",
+    "@typescript-eslint/parser": "^8.25.0",
+    "eslint": "^9.21.0",
+    "typescript": "^5.7.3"
   },
   "scripts": {
     "lint": "make lint",

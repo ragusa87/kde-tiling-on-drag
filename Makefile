@@ -2,7 +2,7 @@ PROJECT_NAME = kde-tiling-on-drag
 KWINPKG_FILE=$(PROJECT_NAME).kwinscript
 MAIN_FILE=contents/code/main.js
 MAIN_FILE_TYPESCRIPT=contents/code/main.ts
-
+SEVEN_ZIP := $(shell command -v 7zz >/dev/null 2>&1 && echo '7zz' || echo '7z')
 install: build # Install script
 	# kpackagetool6 -t kwinscript
 	kpackagetool6 -t KWin/Script -s $(PROJECT_NAME) \
@@ -35,9 +35,9 @@ clear: # Clear build files and artifacts
 	rm -f contents/code/*.js
 	bash -c "set -xve; [[ ! -d node_modules ]] && npm install || exit 0"
 lint: clear # Lint
-	npx eslint -c .eslintrc.json contents
+	npx eslint -c eslint.config.mjs contents
 fix: clear # Lint and fix
-	npx eslint -c .eslintrc.json contents --fix
+	npx eslint -c eslint.config.mjs contents --fix
 build: clear compile # Build package
 	mkdir -p build/contents/code
 	cp -r contents/code build/contents/
@@ -49,6 +49,8 @@ build: clear compile # Build package
 	mkdir -p build/contents/code/
 	cp contents/code/all.js build/contents/code/main.js
 	cp metadata.json build/
-	@7zz a -tzip $(KWINPKG_FILE) ./build/*
+	@$(SEVEN_ZIP) a -tzip $(KWINPKG_FILE) ./build/*
 	rm -f $(MAIN_FILE)
 	rm -f contents/code/all.js
+upgrade:
+	npm install

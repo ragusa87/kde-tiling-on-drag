@@ -4,11 +4,11 @@ import {Console} from './logger';
 import {
     clientProperties,
     clientToString,
+    debounce,
     isSameActivityAndDesktop,
     isSupportedClient,
-    tileToString,
     point,
-    debounce
+    tileToString
 } from './clientHelper';
 
 import {ShortcutManager} from './shortcuts';
@@ -104,11 +104,13 @@ export class Tiler{
 
 
             if(client.minimized){
+                this.rearrangeLayout(null)
                 this.handleMaximizeMinimize(client.output.name, 'minimized')
                 return
             }
 
             // We retile window when we un-minimize one
+            this.rearrangeLayout(client)
             this.tileClient(client, 'Unminimized')
         }
 
@@ -192,7 +194,9 @@ export class Tiler{
      * Add listeners and tile new client
      */
     private attachClient(client: AbstractClient){
-        this.logger.info(`> attachClient ${clientToString(client)}`);
+        this.doLogIf(this.config.logEvents, LogLevel.INFO, `> attachClient: ${clientToString(client)}`);
+        this.rearrangeLayout(client);
+
         client.interactiveMoveResizeFinished.connect(this.interactiveMoveResizeFinished);
         client.interactiveMoveResizeStepped.connect(this.interactiveMoveResizeStepped);
         client.outputChanged.connect(this.clientScreenChangedListener);
@@ -208,7 +212,7 @@ export class Tiler{
      * Remove listeners and re-tile other windows
      */
     private detachClient(client: AbstractClient){
-        this.logger.info(`> detachClient ${clientToString(client)}`);
+        this.doLogIf(this.config.logEvents, LogLevel.INFO, `> detachClient ${clientToString(client)}`);
         client.interactiveMoveResizeFinished.disconnect(this.interactiveMoveResizeFinished);
         client.interactiveMoveResizeStepped.disconnect(this.interactiveMoveResizeStepped);
         client.outputChanged.disconnect(this.clientScreenChangedListener);
@@ -220,6 +224,7 @@ export class Tiler{
         }
 
         client.tile = null;
+        this.rearrangeLayout(null);
         this.retileOtherDeferred(client, null);
     }
 
@@ -245,7 +250,7 @@ export class Tiler{
      */
     private tileClient(client: AbstractClient, reason: string = '', cursor: QPoint|null = null){
 
-        this.logger.debug(`> tileClient ${clientToString(client)} (${reason})`);
+        this.doLogIf(this.config.logEvents, LogLevel.DEBUG, `> tileClient ${clientToString(client)} (${reason})`);
 
         this.doTile(client, 'tileClient', cursor);
 
@@ -268,10 +273,10 @@ export class Tiler{
         // Ask where is the best location for this current window and assign it to the client.
         const bestTileForPosition = tileManager.bestTileForPosition(position.x, position.y);
         if(bestTileForPosition === null && this.config.doMaximizeWhenNoLayoutExists){
-            this.logger.debug(`No tile exists for ${clientToString(client)}, maximize it instead`);
+            this.doLogIf(this.config.logMaximize, LogLevel.INFO, `No tile exists for ${clientToString(client)}, maximize it instead`);
             client.frameGeometry = this.padGeometry(workspace.clientArea(KWin.MaximizeArea, client.output, workspace.currentDesktop), client.output.name);
         }
-        this.logger.info(`doTile: ${clientToString(client)} to ${bestTileForPosition?.toString()} (${reason}) screen ${client.output.name}. Current tile ${client.tile}`);
+        this.doLogIf(this.config.logEvents, LogLevel.INFO, `doTile: ${clientToString(client)} to ${bestTileForPosition?.toString()} (${reason}) screen ${client.output.name}. Current tile ${client.tile}`);
 
         // The user dragged the window at the same tile as before, we need to re-tile it.
         if(client.tile == bestTileForPosition){
@@ -407,7 +412,7 @@ export class Tiler{
         }
         const output = client ? client.output : workspace.activeScreen
 
-        this.logger.debug('re-tile other windows');
+        this.doLogIf(this.config.logEvents, LogLevel.DEBUG, 're-tile other windows');
 
         const justRetiled: AbstractClient[] = [];
         // Tile all clients (this will un-maximize maximized window)
@@ -462,12 +467,9 @@ export class Tiler{
                     }
                  });
 
-
-                this.logger.debug(`${otherClientsOnTile.length} client(s) on tile ${tileToString(tile)}, screen ${screen}`);
-
                 // As the tile is used by more than one client, move one of them to a free tile on the same screen.
                 if (otherClientsOnTile.length > 1 && freeTileOnScreen.length > 0) {
-                    this.logger.debug('Check crowded tile on same screen..')
+                    this.doLogIf(this.config.logDebugScreens, LogLevel.DEBUG, 'Check crowded tile on same screen..')
                     const usedTile =  this.moveClientToFreeTile(client, otherClientsOnTile, freeTileOnScreen,  justRetiled, affectedTile,'otherClientsOnTile');
                     if(usedTile){
                         freeTilesOverall = freeTilesOverall.filter((tile: Tile) => tile !== usedTile);
@@ -513,8 +515,6 @@ export class Tiler{
         this.getAllScreensNames(client?.output?.name).forEach((screen: string) => {
             this.handleMaximizeMinimize(screen, `finished retileOther: Screen: ${screen}`);
         });
-        // Output the client's list if the option is enabled
-        this.debugTree()
     }
 
     /**
@@ -566,7 +566,7 @@ export class Tiler{
     /**
      * Output information about the current screen, list the tiles and clients.
      */
-    private debugTree() {
+    private debugTree(currentScreenOnly: boolean = false){
         if(!this.config.logDebugTree){
             return;
         }
@@ -575,7 +575,8 @@ export class Tiler{
         const tab2 = tab + tab;
         const tab3 = tab2 + tab;
         const tab4 = tab3 + tab;
-        this.getAllScreensNames(workspace.activeScreen.name).forEach((screen: string) => {
+        const screens = currentScreenOnly ? [workspace.activeScreen.name] : this.getAllScreensNames(workspace.activeScreen.name);
+        screens.forEach((screen: string) => {
             output += `screen ${screen} - tiled: ${this.getTiledClientsOnScreen(screen).length} untiled: ${this.getUntiledClientOnScreen(screen).length} number of tiles: ${this.getAllTiles([screen]).length} \n`;
             if(this.getUntiledClientOnScreen(screen).length > 0) {
                 output += `${tab2} - untiled:\n${this.getUntiledClientOnScreen(screen).map((client: AbstractClient) => `${tab4} - ${clientToString(client)}`).join(', ')}\n`;
@@ -634,7 +635,6 @@ export class Tiler{
      */
     private moveClientToFreeTile(client: AbstractClient, otherClientsOnTile: AbstractClient[], freeTileOnScreen: Tile[], recentlyTiledClients: AbstractClient[], tile: Tile|null, reason: string): Tile|null {
         this.logger.debug(`Move one client from tile to a free one (${reason})`);
-        this.debugTree()
         let clientToMove = null
         do{
             const bestCandidates = recentlyTiledClients
@@ -707,6 +707,82 @@ export class Tiler{
             y: geometry.y + padding,
             width: geometry.width - 2 * padding,
             height: geometry.height - 2 * padding
+        }
+    }
+
+    private rearrangeLayout(client: AbstractClient|null) {
+        if(!this.config.getRearrangeLayout()){
+            return
+        }
+
+        const maxNumberOfTiles = 4; // TODO move to config
+        const direction = 1 // Vertical split
+
+        // statistics
+        const currentOutputName = client?.output.name ?? workspace.activeScreen.name
+        this.doLogIf(this.config.logEvents, LogLevel.INFO, '> rearrangeLayout')
+        const emptyTiles: Tile[] = []
+        let numberOfTiles = 0
+        let numberOfTiledClients = 0
+        for (const tile of this.getAllTiles([currentOutputName], true)) {
+            numberOfTiles++
+            numberOfTiledClients += this.getClientOnTile(tile).length
+            if (this.getClientOnTile(tile).length === 0) {
+                emptyTiles.push(tile)
+            }
+        }
+        numberOfTiledClients += this.getClientOnTile(workspace.tilingForScreen(currentOutputName)!.rootTile).length
+        const numberOfUntiledClients = this.getUntiledClientOnScreen(currentOutputName).length;
+        let numberOfTilesToCreate = numberOfUntiledClients + numberOfTiledClients - numberOfTiles
+        this.doLogIf(this.config.logRearrangeLayout, LogLevel.DEBUG, 'rearrangeLayout...' + `${emptyTiles.length} empty tiles found, \n${numberOfUntiledClients} untiled client, \n${numberOfTiledClients} tiled clients. \nNeeds to create ${numberOfTilesToCreate} tiles\nNumber of tiles ${numberOfTiles}`)
+        this.debugTree(true)
+
+        // Remove a client (null) => Remove 1 tile
+        if(client === null && numberOfTilesToCreate < 0 && emptyTiles.length > 0) {
+            let candidate = emptyTiles[0]
+            for (const tile of emptyTiles) {
+                if (direction == 1 && tile.absoluteGeometryInScreen.width > candidate.absoluteGeometryInScreen.width) {
+                    candidate = tile
+                }
+                if (direction != 1 && tile.absoluteGeometryInScreen.height > candidate.absoluteGeometryInScreen.height) {
+                    candidate = tile
+                }
+            }
+            this.doLogIf(this.config.logRearrangeLayout,LogLevel.DEBUG, 'rearrangeLayout...' + `Remove one empty tile ${tileToString(emptyTiles[0])}`)
+            emptyTiles.splice(emptyTiles.indexOf(candidate), 1)
+            candidate.remove()
+        }
+
+
+        if(numberOfTiles + numberOfTilesToCreate > maxNumberOfTiles) {
+            this.doLogIf(this.config.logRearrangeLayout,LogLevel.DEBUG, `rearrangeLayout: too many tiles to create ${direction} : ${numberOfTiles + numberOfTilesToCreate}`)
+            numberOfTilesToCreate = Math.max(0, maxNumberOfTiles - numberOfTiles);
+        }
+        // Add a client => Create X tiles for it
+        if(client !== null && numberOfTilesToCreate > 0){
+            this.doLogIf(this.config.logRearrangeLayout,LogLevel.DEBUG, `rearrangeLayout: no empty tile, create ${numberOfTilesToCreate} tiles `)
+            const root = workspace.tilingForScreen(client.output.name)!.rootTile
+            for(let i = 0 ; i < numberOfTilesToCreate; i++) {
+                let toSplit: Tile = root
+                if(toSplit.tiles.length > 0) {
+                    let candidate = toSplit.tiles[0]
+                    for(const tile of toSplit.tiles) {
+                        if (direction == 1 && tile.absoluteGeometryInScreen.width > candidate.absoluteGeometryInScreen.width) {
+                            candidate = tile
+                        }
+                        if (direction != 1 && tile.absoluteGeometryInScreen.height > candidate.absoluteGeometryInScreen.height) {
+                            candidate = tile
+                        }
+                    }
+                    toSplit = candidate
+                }
+                this.doLogIf(this.config.logRearrangeLayout,LogLevel.DEBUG, `rearrangeLayout: split ${tileToString(toSplit)}`)
+                toSplit.split(direction == 1 ? 1 : 2)
+                if(toSplit == root){
+                    i++ // Split root create 2 tiles from zero, so we need one less iteration
+                }
+            }
+            this.retileOther(client)
         }
     }
 }

@@ -49,6 +49,6 @@ build: clear compile # Build package
 	mkdir -p build/contents/code/
 	cp contents/code/all.js build/contents/code/main.js
 	cp metadata.json build/
-	@7z a -tzip $(KWINPKG_FILE) ./build/*
+	@7zz a -tzip $(KWINPKG_FILE) ./build/*
 	rm -f $(MAIN_FILE)
 	rm -f contents/code/all.js

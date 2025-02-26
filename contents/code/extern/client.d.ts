@@ -261,6 +261,8 @@ declare interface AbstractClient extends Toplevel {
 // functions
     setMaximize(vertically: boolean, horizontally: boolean): void;
 }
+type LayoutDirection = 0 | 1 | 2; // 0 = floating, 1= horizontal, 2 = vertical
+
 declare interface Tile {
     tiles: Array<Tile>;
     windows: AbstractClient[];
@@ -290,11 +292,6 @@ declare interface Tile {
     // objectNameChanged: Signal<any>;
     // absoluteGeometryChanged: Signal<() => void>;
     // relativeGeometryChanged: Signal<() => void>;
-}
-declare enum LayoutDirection {
-    Floating = 0,
-    Horizontal,
-    Vertical,
 }
 
 declare interface CustomTile extends Tile {

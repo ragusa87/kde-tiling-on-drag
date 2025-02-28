@@ -1,16 +1,6 @@
 import {Config} from './config';
 import {Tiler} from './tiler';
 
-const isDebug = readConfig('isDebug', false);
-const config = new Config(isDebug);
-config
-    .setLogWindowProperties(readConfig('logWindowProperties', false))
-    .setShowOutline(readConfig('showOutline', true))
-    .setRearrangeBetweenMonitors(readConfig('rearrangeBetweenMonitors', false))
-    .setMaximizeSingleWindow(readConfig('maximizeSingleWindow', true))
-    .setRearrangeWindows(readConfig('rearrangeWindows', true))
-    .setMaximizeWithPadding(readConfig('maximizeWithPadding', true))
-    .setRearrangeLayout(readConfig('rearrangeLayout', false))
-
-console.log(`Tiling started with debug: ${isDebug}`)
+const config = new Config();
+console.log(`Tiling started with debug: ${config.isDebug()}`)
 new Tiler(config);

@@ -43,8 +43,14 @@ declare interface KWinEnums{
 }
 
 declare interface VirtualDesktop{
-
+    readonly id: string
+    readonly name: string
+    readonly x11DesktopNumber: number
+    nameChanged: Signal<() => void>;
+    x11DesktopNumberChanged: Signal<() => void>;
+    aboutToBeDestroyed: Signal<() => void>;
 }
+
 declare interface Toplevel {
     readonly popupWindow: boolean;
     readonly frameGeometry: QRect;

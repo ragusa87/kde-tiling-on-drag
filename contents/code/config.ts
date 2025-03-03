@@ -33,8 +33,8 @@ export class Config {
         this.logWindowProperties = readConfig('logWindowProperties', false)
         this.doShowOutline = readConfig('showOutline', true) && false
         this.rearrangeBetweenMonitors = readConfig('rearrangeBetweenMonitors', false)
-        this.doMaximizeSingleWindow = false // readConfig('maximizeSingleWindow', true)
-        this.doMaximizeWhenNoLayoutExists = false
+        this.doMaximizeSingleWindow = readConfig('maximizeSingleWindow', true)
+        this.doMaximizeWhenNoLayoutExists = false // We now use the root tile instead.
         this.doRearrangeWindows = readConfig('rearrangeWindows', true)
         this.maximizeWithPadding = readConfig('maximizeWithPadding', true)
         this.rearrangeLayout = readConfig('rearrangeLayout', false)

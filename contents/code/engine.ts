@@ -30,6 +30,7 @@ export interface EngineInterface{
     retileOther(client: AbstractClient|null, affectedTile: Tile|null): void;
     layoutModified(output: Output): void;
     interactiveMoveResizeFinished(client: AbstractClient, cursPos: QPoint): void;
+    workspaceChanged(): void;
 }
 
 export class Engine implements EngineInterface {
@@ -41,6 +42,9 @@ export class Engine implements EngineInterface {
         this.logger = logger
     }
 
+    public workspaceChanged(): void {
+        this.handleMaximizeMinimize(workspace.activeScreen, 'workspace-changed')
+    }
     public attachClient(client: AbstractClient): void {
         const tile = this.rearrangeLayout(client.output, false)
         const affectedTile = this.doTile(client, 'attachClient', tile == null ? null :getTileCenter(tile))
@@ -151,12 +155,13 @@ export class Engine implements EngineInterface {
                 return
             }
             // Create new layouts
-            const tile = this.rearrangeLayout(client.output)
-            const affectedTile = this.doTile(client, 'unminimized', tile == null ? null :getTileCenter(tile))
-            this.retileUntiled(client.output, 'unminimized');
+            const tile = this.rearrangeLayout(client.output, client.minimized)
+            const label = client.minimized ? 'unminimized' : 'minimized'
+            const affectedTile = this.doTile(client, label, tile == null ? null :getTileCenter(tile))
+            this.retileUntiled(client.output, label);
             this.retileOther(client, affectedTile)
             if(tile === null)
-                this.handleMaximizeMinimize(client.output, 'unminimized')
+                this.handleMaximizeMinimize(client.output, label)
     }
 
     public layoutModified(output: Output): void{
@@ -190,33 +195,37 @@ export class Engine implements EngineInterface {
         return numberOfTilesToCreate
     }
     public rearrangeLayout(output: Output, isDeletion: boolean = false): Tile|null {
-        if (!this.config.getRearrangeLayout()) {
+        if (!this.config.rearrangeLayout) {
             return null;
         }
 
         const numberOfTilesToCreate = this.getNumberOfTilesToCreate(output)
+        isDeletion = isDeletion || numberOfTilesToCreate < 0
         this.doLogIf(this.config.logRearrangeLayout, LogLevel.ERROR, `rearrangeLayout: ${numberOfTilesToCreate} tile(s) to ${(numberOfTilesToCreate < 0 ? 'delete' : 'add')} on ${output.name}`)
 
         const direction: LayoutDirection = 1 // Horizontal split
         const emptyTiles = getEmptyTilesByOutput(output)
+        this.doLogIf(this.config.logRearrangeLayout, LogLevel.DEBUG, `rearrangeLayout: ${emptyTiles.length} empty tile(s)`)
 
         if(isDeletion && numberOfTilesToCreate < 0 && emptyTiles.length > 0) {
-            let candidate = emptyTiles[0]
-            for (const tile of emptyTiles) {
-                if (tile.canBeRemoved && direction == 1 && tile.absoluteGeometryInScreen.width > candidate.absoluteGeometryInScreen.width) {
-                    candidate = tile
+            for(let i = numberOfTilesToCreate; i < 0 && emptyTiles.length > 0; i++) {
+                let candidate = emptyTiles[0]
+                for (const tile of emptyTiles) {
+                    if (tile.canBeRemoved && direction == 1 && tile.absoluteGeometryInScreen.width > candidate.absoluteGeometryInScreen.width) {
+                        candidate = tile
+                    }
+                    if (tile.canBeRemoved && direction != 1 && tile.absoluteGeometryInScreen.height > candidate.absoluteGeometryInScreen.height) {
+                        candidate = tile
+                    }
                 }
-                if (tile.canBeRemoved && direction != 1 && tile.absoluteGeometryInScreen.height > candidate.absoluteGeometryInScreen.height) {
-                    candidate = tile
+                this.doLogIf(this.config.logRearrangeLayout, LogLevel.DEBUG, 'rearrangeLayout...' + `Remove empty tile ${tileToString(emptyTiles[0])}`)
+                if (!candidate.canBeRemoved) {
+                    this.logger.error(`Can not remove tile ${tileToString(candidate)}`)
+                    return null
                 }
+                emptyTiles.splice(emptyTiles.indexOf(candidate), 1)
+                candidate.remove()
             }
-            this.doLogIf(this.config.logRearrangeLayout,LogLevel.DEBUG, 'rearrangeLayout...' + `Remove one empty tile ${tileToString(emptyTiles[0])}`)
-            emptyTiles.splice(emptyTiles.indexOf(candidate), 1)
-            if(!candidate.canBeRemoved){
-                this.logger.error(`Can not remove tile ${tileToString(candidate)}`)
-                return null
-            }
-            candidate.remove()
             return null
         }
 

@@ -25,6 +25,8 @@ export class Tiler{
     outputChangedHandlers: Map<AbstractClient, () => void>;
     interactiveMoveResizeSteppedHandlers: Map<AbstractClient, () => void>;
     desktopChangedHandlers: Map<AbstractClient, () => void>;
+    previousActivity: string
+    previousDesktop: VirtualDesktop
     constructor(config: Config){
         this.config = config;
         this.logger = new Console(this.config.logLevel)
@@ -35,7 +37,8 @@ export class Tiler{
         this.interactiveMoveResizeFinishedHandlers = new Map<AbstractClient, () => void>();
         this.interactiveMoveResizeSteppedHandlers = new Map<AbstractClient, () => void>();
         this.desktopChangedHandlers = new Map<AbstractClient, () => void>();
-
+        this.previousDesktop = workspace.currentDesktop
+        this.previousActivity = workspace.currentActivity
 
         this.minimizedChanged = (client: AbstractClient) => {
             this.event( `minimizedChanged: ${clientToString(client)} ${client.minimized ? 'minimized' : 'unminimized'}`)
@@ -71,6 +74,16 @@ export class Tiler{
             }
             this.event(`windowActivated: ${clientToString(client)}`)
             this.lastWindowActivated = client
+            if(this.previousDesktop.id !== workspace.currentDesktop.id){
+                this.event('workspace changed')
+                this.engine.workspaceChanged()
+            }
+            if(this.previousActivity !== workspace.currentActivity){
+                this.event('Activity changed')
+                this.engine.workspaceChanged() // TODO add event ?
+            }
+            this.previousDesktop = workspace.currentDesktop
+            this.previousActivity = workspace.currentActivity
         })
 
         // Detach old client

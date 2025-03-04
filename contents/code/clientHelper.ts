@@ -255,7 +255,7 @@ export function clientProperties (client: AbstractClient):string{
             tiles.forEach((tile: Tile) => {
                 result += (`${tab2} -  ${tileToString(tile)} (parent ${tileToString(tile.parent)}) - clients: ${getClientOnTile(tile).length} (un-filtered ${tile.windows.length})\n`)
                 getClientOnTile(tile).forEach((client: AbstractClient) => {
-                    result += (`${tab4} * ${clientToString(client)}\n`);
+                    result += (`${tab4} * ${clientToString(client)} ${client.activities.join(',')} ${client.desktops.map(d => d.name)}\n`);
                 })
             })
         });

@@ -17,7 +17,7 @@ import {
     getClientsOnOutput,
     getEmptyTilesByOutput,
     getClientsOnRootTile,
-    debugTree,
+    debugTree, debounce,
 } from './clientHelper';
 
 import {LogLevel} from './logLevel';
@@ -42,27 +42,37 @@ export class Engine implements EngineInterface {
         this.logger = logger
     }
 
+    public doRearrangeAndTile(client: AbstractClient, reason: string, point: QPoint|null = null ): void{
+        const tile = this.rearrangeLayout(client.output, false)
+        const affectedTile = this.doTile(client, reason, point ? point : (tile == null ? null :getTileCenter(tile)))
+        debounce(() => {
+        this.retileOther(client, affectedTile)
+        this.handleMaximizeMinimize(workspace.activeScreen, reason)
+            }, 500)
+    }
+    public doRearrangeAndTileOutput(output: Output, reason: string): void{
+        this.rearrangeLayout(output, false)
+        debounce(() => {
+            this.retileUntiled(output, 'workspaceChanged');
+            this.handleMaximizeMinimize(output, reason)
+        }, 500)
+    }
+
     public workspaceChanged(): void {
-        this.handleMaximizeMinimize(workspace.activeScreen, 'workspace-changed')
+        this.doRearrangeAndTileOutput(workspace.activeScreen, 'workspaceChanged')
     }
     public attachClient(client: AbstractClient): void {
-        const tile = this.rearrangeLayout(client.output, false)
-        const affectedTile = this.doTile(client, 'attachClient', tile == null ? null :getTileCenter(tile))
-        this.retileUntiled(client.output, 'attachClient');
-        this.retileOther(client, affectedTile)
+        this.doRearrangeAndTile(client, 'attachClient');
     }
 
    public interactiveMoveResizeFinished(client: AbstractClient, point: QPoint){
-       const tile = this.rearrangeLayout(client.output, false)
-       this.doTile(client, 'attachClient', tile == null ? point : getTileCenter(tile))
-
+       this.doRearrangeAndTile(client, 'interactiveMoveResizeFinished', point)
        // TODO resizeStep" is sometimes not called, so we don't know from witch output the client was moved.
-       getAllOutputs(null).filter((output: Output) => output !== client.output).forEach((output: Output) => {
-           const tile =  this.rearrangeLayout(output, true)
-           const affectedTile = this.doTile(client, 'interactiveMoveResizeFinished', tile == null ? null :getTileCenter(tile))
-           this.retileUntiled(output, 'interactiveMoveResizeFinished');
-           this.retileOther(client, affectedTile)
-       })
+        debounce(() => {
+               getAllOutputs(null).filter((output: Output) => output !== client.output).forEach((output: Output) => {
+                   this.doRearrangeAndTileOutput(output, 'interactiveMoveResizeFinished')
+               })
+       }, 500)
    }
 
 
@@ -150,18 +160,7 @@ export class Engine implements EngineInterface {
     }
 
     public minimizedChanged(client: AbstractClient): void {
-            if(client.minimized){
-                this.rearrangeLayout(client.output, true)
-                return
-            }
-            // Create new layouts
-            const tile = this.rearrangeLayout(client.output, client.minimized)
-            const label = client.minimized ? 'unminimized' : 'minimized'
-            const affectedTile = this.doTile(client, label, tile == null ? null :getTileCenter(tile))
-            this.retileUntiled(client.output, label);
-            this.retileOther(client, affectedTile)
-            if(tile === null)
-                this.handleMaximizeMinimize(client.output, label)
+        this.doRearrangeAndTile(client, 'minimized')
     }
 
     public layoutModified(output: Output): void{
@@ -206,6 +205,15 @@ export class Engine implements EngineInterface {
         const direction: LayoutDirection = 1 // Horizontal split
         const emptyTiles = getEmptyTilesByOutput(output)
         this.doLogIf(this.config.logRearrangeLayout, LogLevel.DEBUG, `rearrangeLayout: ${emptyTiles.length} empty tile(s)`)
+
+
+        const tiledClients = getClientsOnOutput(output).filter((client: AbstractClient) => client.tile !== null) // root is counted
+        if(tiledClients.length === 1 && numberOfTilesToCreate === 0 && this.config.doMaximizeUsingRootTile){
+            const root = workspace.tilingForScreen(output.name)!.rootTile
+            this.logger.debug(`Tile client ${clientToString(tiledClients[0])} to root ${tileToString(root)}`)
+            this.doTile(tiledClients.pop()!, 'Retile client on root tile', getTileCenter(root))
+            return root
+        }
 
         if(isDeletion && numberOfTilesToCreate < 0 && emptyTiles.length > 0) {
             for(let i = numberOfTilesToCreate; i < 0 && emptyTiles.length > 0; i++) {
@@ -290,6 +298,7 @@ export class Engine implements EngineInterface {
         if(affectedTile !== null && emptyTiles.length > 0){
             const candidate = getClientOnTile(affectedTile).filter(myClient => myClient !== client).pop()
             if(candidate){
+                this.doTile(client, 'Retiler other on free tile', getTileCenter(emptyTiles[0]))
                 candidate.tile = emptyTiles[0]
                 return
             }

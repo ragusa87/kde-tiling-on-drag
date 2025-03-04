@@ -10,7 +10,7 @@ export class Config {
     logDebugScreens: boolean = false;
     doMaximizeSingleWindow: boolean = true;
     doMaximizeWhenNoLayoutExists: boolean = true;
-    doMaximizeUsingRootTile: boolean = true;
+    doMaximizeUsingRootTile: boolean = false;
     doShowOutline: boolean = true;
     rearrangeBetweenMonitors: boolean = false;
     rearrangeLayout: boolean = false;

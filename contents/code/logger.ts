@@ -41,7 +41,7 @@ function log(level: LogLevel, ...value: any){
 
 // Inspired by https://www.php-fig.org/psr/psr-3/
 type consoleContext = {[key:string]:any}
-interface LoggerInterface
+export interface LoggerInterface
 {
     debug(message: string, context: consoleContext): void
     info(message: string, context: consoleContext): void

@@ -46,16 +46,16 @@ export class Engine implements EngineInterface {
         const tile = this.rearrangeLayout(client.output, false)
         const affectedTile = this.doTile(client, reason, point ? point : (tile == null ? null :getTileCenter(tile)))
         debounce(() => {
-        this.retileOther(client, affectedTile)
-        this.handleMaximizeMinimize(workspace.activeScreen, reason)
-            }, 500)
+            this.retileOther(client, affectedTile)
+            this.handleMaximizeMinimize(workspace.activeScreen, reason)
+        }, 300)()
     }
     public doRearrangeAndTileOutput(output: Output, reason: string): void{
         this.rearrangeLayout(output, false)
         debounce(() => {
             this.retileUntiled(output, 'workspaceChanged');
             this.handleMaximizeMinimize(output, reason)
-        }, 500)
+        }, 300)()
     }
 
     public workspaceChanged(): void {
@@ -72,7 +72,7 @@ export class Engine implements EngineInterface {
                getAllOutputs(null).filter((output: Output) => output !== client.output).forEach((output: Output) => {
                    this.doRearrangeAndTileOutput(output, 'interactiveMoveResizeFinished')
                })
-       }, 500)
+       }, 800)()
    }
 
 
@@ -129,12 +129,12 @@ export class Engine implements EngineInterface {
 
         // Ask where is the best location for this current window and assign it to the client.
         let bestTileForPosition = tileManager.bestTileForPosition(position.x, position.y);
-        if (bestTileForPosition === null && this.config.doMaximizeWhenNoLayoutExists) {
+        if (!bestTileForPosition && this.config.doMaximizeWhenNoLayoutExists) {
             this.doLogIf(this.config.logMaximize, LogLevel.INFO, `No tile exists for ${clientToString(client)}, maximize it instead`);
             client.frameGeometry = padGeometry(this.config, workspace.clientArea(KWin.MaximizeArea, client.output, workspace.currentDesktop), client.output.name);
             return tileManager.rootTile
         }
-        if (bestTileForPosition === null && this.config.doMaximizeUsingRootTile) {
+        if (!bestTileForPosition && this.config.doMaximizeUsingRootTile) {
             bestTileForPosition = tileManager.rootTile
         }
         this.doLogIf(this.config.logEvents, LogLevel.INFO, `doTile: ${clientToString(client)} to ${bestTileForPosition?.toString()} (${reason}) screen ${client.output.name}. Current tile ${client.tile}`);
@@ -160,7 +160,16 @@ export class Engine implements EngineInterface {
     }
 
     public minimizedChanged(client: AbstractClient): void {
-        this.doRearrangeAndTile(client, 'minimized')
+        if(client.minimized){
+            this.logger.debug('Untile minimized client' + clientToString(client))
+            const output = client.output
+            debounce(() => {
+                this.doRearrangeAndTileOutput(output, 'minimized')
+            }, 100)()
+            return
+        }
+
+        this.doRearrangeAndTile(client, 'unminimized')
     }
 
     public layoutModified(output: Output): void{
@@ -286,22 +295,31 @@ export class Engine implements EngineInterface {
      * Re-tile other windows (so they can fit a better position due to the change of the given client)
      */
     public retileOther(client: AbstractClient, affectedTile: Tile | null = null) {
-        if(!this.config.doRearrangeWindows){
-            // Minimize/maximize all windows on the screen
-            getAllOutputs(client?.output ?? null).forEach((output: Output) => {
-                this.handleMaximizeMinimize(output, `finished retileOther: Screen: ${output.name}`);
-            });
-            return;
+         if(!this.config.doRearrangeWindows){
+             // Minimize/maximize all windows on the screen
+             getAllOutputs(client?.output ?? null).forEach((output: Output) => {
+                 this.handleMaximizeMinimize(output, `finished retileOther: Screen: ${output.name}`);
+             });
+             return;
+        }
+        
+        if(client.output != workspace.activeScreen){
+            this.logger.warn(`retilerOther: Screen mismatch client: ${client.output.name}, current: ${workspace.activeScreen.name}`)
         }
 
-        const emptyTiles = getEmptyTilesByOutput(client.output)
+        // The affected tile is not free, but stil listed as free by KDE so we filter it out
+        const emptyTiles = getEmptyTilesByOutput(client.output).filter(tile => (tile +'') != (affectedTile+'')) 
+
         if(affectedTile !== null && emptyTiles.length > 0){
             const candidate = getClientOnTile(affectedTile).filter(myClient => myClient !== client).pop()
             if(candidate){
-                this.doTile(client, 'Retiler other on free tile', getTileCenter(emptyTiles[0]))
-                candidate.tile = emptyTiles[0]
+                this.logger.debug(`Free tile: ${tileToString(emptyTiles[0])}`)
+                this.logger.debug(`affectedTile tile: ${tileToString(affectedTile)}`)
+                debugTree(this.config, this.logger)
+                this.doTile(candidate, 'Retiler other on free tile: ', getTileCenter(emptyTiles[0]))
                 return
             }
+            this.logger.warn('No candidate but there is a free tile..')
         }
 
         const output = client.output

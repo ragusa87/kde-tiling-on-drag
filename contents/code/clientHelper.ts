@@ -303,7 +303,7 @@ export function clientProperties (client: AbstractClient):string{
         return tiles;
     }
     export function getTileCenter(tile: Tile): QPoint{
-        const geometry = tile?.absoluteGeometryInScreen ?? null
+        const geometry = tile?.absoluteGeometry ?? null
         if(!geometry){
             console.warn('No geometry provided')
             return {x: 0, y: 0}
